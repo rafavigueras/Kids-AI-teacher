@@ -96,7 +96,7 @@ async function init() {
     document.getElementById("progress-bar").style.width = `${(state.index / state.total) * 100}%`;
     document.getElementById("question-text").textContent = ex.question;
     document.getElementById("answer-input").value = "";
-    document.getElementById("hint-text").textContent = ex.hint ? `Pista: ${ex.hint}` : "";
+    document.getElementById("hint-text").textContent = ex.hint ? `Pista: ${ex.hint.split(" → ")[0]}` : "";
     show(quizEl);
     document.getElementById("answer-input").focus();
   }
