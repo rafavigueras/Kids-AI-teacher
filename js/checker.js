@@ -25,20 +25,52 @@ const CONTRACTIONS = [
   ["shouldn't", "should not"],
 ];
 
+// Sinónimos: cada par [variante, forma canónica]
+const SYNONYMS = [
+  ["lots of", "a lot of"],
+  ["movie", "film"],
+  ["movies", "films"],
+  ["mom", "mum"],
+  ["smart", "clever"],
+  ["intelligent", "clever"],
+  ["lovely", "beautiful"],
+  ["pretty", "beautiful"],
+  ["weird", "strange"],
+  ["odd", "strange"],
+  ["anybody", "anyone"],
+  ["kilometres", "kilometers"],
+];
+
 function normalize(text) {
   let s = text.toLowerCase().trim();
   s = s.replace(/[.!?,;:]+$/, "").trim();
   for (const [contraction, expanded] of CONTRACTIONS) {
     s = s.replaceAll(contraction, expanded);
   }
+  for (const [variant, canonical] of SYNONYMS) {
+    s = s.replaceAll(variant, canonical);
+  }
   s = s.replace(/\s+/g, " ").trim();
   return s;
+}
+
+// Elimina "too"/"also" para comparar independientemente de su posición
+function stripTooAlso(text) {
+  return text.replace(/\b(too|also)\b/g, "").replace(/\s+/g, " ").trim();
 }
 
 function check(userAnswer, acceptedList) {
   const userNorm = normalize(userAnswer);
   for (const accepted of acceptedList) {
-    if (normalize(accepted) === userNorm) return true;
+    const acceptedNorm = normalize(accepted);
+    // Coincidencia exacta (tras normalizar)
+    if (acceptedNorm === userNorm) return true;
+    // "also"/"too" en distinta posición pero mismo significado
+    const bothHaveTooAlso =
+      /\b(too|also)\b/.test(userNorm) && /\b(too|also)\b/.test(acceptedNorm);
+    if (bothHaveTooAlso && stripTooAlso(acceptedNorm) === stripTooAlso(userNorm)) {
+      return true;
+    }
   }
   return false;
 }
