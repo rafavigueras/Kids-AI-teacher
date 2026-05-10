@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ranking</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="page-header">
+    <a href="index.html" class="back-link" title="Volver al inicio">←</a>
+    <span class="logo">🏆</span>
+    <div>
+      <h1 id="lb-title">Ranking</h1>
+      <p class="subtitle">Top 10 mejores puntuaciones</p>
+    </div>
+  </header>
+
+  <main>
+    <div id="lb-container"></div>
+    <div class="lb-footer">
+      <button id="btn-reset" class="btn btn-danger">🗑️ Resetear ranking</button>
+    </div>
+  </main>
+
+  <script type="module">
+    import { getTop10, reset } from "./js/leaderboard.js";
+
+    const params = new URLSearchParams(location.search);
+    const sheetId = params.get("sheet") || "";
+    const title = params.get("title") || "Ranking";
+
+    document.getElementById("lb-title").textContent = title;
+    document.title = "Ranking – " + title;
+
+    const MEDALS = ["🥇", "🥈", "🥉"];
+    const RANK_CLASSES = ["rank-1", "rank-2", "rank-3"];
+
+    function render() {
+      const entries = getTop10(sheetId);
+      const container = document.getElementById("lb-container");
+
+      if (entries.length === 0) {
+        container.innerHTML = `
+          <div class="lb-empty">
+            <p style="font-size:3rem;margin-bottom:0.75rem">🏆</p>
+            <p style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">¡Sé el primero!</p>
+            <p>Todavía no hay puntuaciones guardadas para esta ficha.</p>
+          </div>`;
+        return;
+      }
+
+      const rows = entries
+        .map((e, i) => {
+          const medal = MEDALS[i] || "";
+          const cls = RANK_CLASSES[i] || "";
+          return `
+            <tr>
+              <td><span class="rank ${cls}">${medal || i + 1}</span></td>
+              <td style="font-weight:600">${escHtml(e.name)}</td>
+              <td>${e.correct}/${e.total}</td>
+              <td style="font-weight:700;color:var(--primary)">${e.percentage}%</td>
+              <td style="color:var(--text-muted);font-size:0.85rem">${e.date}</td>
+            </tr>`;
+        })
+        .join("");
+
+      container.innerHTML = `
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Aciertos</th>
+              <th>%</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    function escHtml(str) {
+      return str.replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+      );
+    }
+
+    document.getElementById("btn-reset").addEventListener("click", () => {
+      if (confirm("¿Seguro que quieres borrar todas las puntuaciones? Esta acción no se puede deshacer.")) {
+        reset(sheetId);
+        render();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
