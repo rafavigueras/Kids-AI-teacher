@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Practicar</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="confetti-container"></div>
+
+  <header class="page-header">
+    <a href="index.html" class="back-link" title="Volver al inicio">←</a>
+    <span class="logo">✏️</span>
+    <div>
+      <h1 id="sheet-title">Cargando…</h1>
+      <p class="subtitle">Modo práctica</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- Modal de configuración -->
+    <div id="modal-setup" class="modal-overlay">
+      <div class="modal">
+        <h2>¡A practicar! 🚀</h2>
+        <div class="form-group">
+          <label for="player-name">Tu nombre</label>
+          <input type="text" id="player-name" placeholder="Escribe tu nombre…" maxlength="30" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="num-questions">Número de preguntas</label>
+          <input type="number" id="num-questions" min="1" max="37" value="10" />
+        </div>
+        <button id="btn-start" class="btn btn-primary" style="width:100%;margin-top:0.5rem">Empezar →</button>
+      </div>
+    </div>
+
+    <!-- Pantalla de pregunta -->
+    <div id="quiz-screen" class="screen hidden">
+      <div class="quiz-wrap">
+        <div class="progress-info">
+          <span id="progress">Pregunta 1 de 10</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-bar"></div>
+        </div>
+        <p class="question-label">Traduce al inglés</p>
+        <p class="question-text" id="question-text"></p>
+        <p class="hint-text" id="hint-text"></p>
+        <textarea
+          class="answer-input"
+          id="answer-input"
+          placeholder="Escribe tu respuesta en inglés…"
+          rows="2"
+        ></textarea>
+        <button id="btn-submit" class="btn btn-primary" style="width:100%">Enviar →</button>
+      </div>
+    </div>
+
+    <!-- Pantalla de feedback -->
+    <div id="feedback-screen" class="screen hidden">
+      <div class="feedback-icon" id="feedback-icon"></div>
+      <h2 class="feedback-title" id="feedback-title"></h2>
+      <p class="feedback-question" id="feedback-question"></p>
+      <p class="feedback-user" id="feedback-user"></p>
+      <p class="feedback-correct-answer" id="correct-answer"></p>
+      <button id="btn-next" class="btn btn-primary" style="margin-top:0.5rem">Siguiente →</button>
+    </div>
+
+    <!-- Pantalla de resultado -->
+    <div id="result-screen" class="screen hidden">
+      <div class="result-wrap">
+        <div class="result-stars" id="result-stars"></div>
+        <div class="result-score" id="result-score"></div>
+        <div class="result-pct" id="result-pct"></div>
+        <div class="result-name" id="result-name"></div>
+        <div class="result-actions">
+          <button id="btn-save" class="btn btn-primary">💾 Guardar en ranking</button>
+          <button id="btn-restart" class="btn btn-secondary">🔄 Repetir</button>
+          <button id="btn-home" class="btn btn-secondary">🏠 Inicio</button>
+          <a id="btn-leaderboard" href="#" class="btn btn-secondary hidden">🏆 Ver ranking</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/exercise.js" type="module"></script>
+</body>
+</html>
