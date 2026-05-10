@@ -60,6 +60,24 @@
     },
     {
       "id": 2,
+      "question": "Esta semana hemos comido pizza dos veces. La semana pasada no comimos ninguna.",
+      "accepted": [
+        "This week we have eaten pizza twice. Last week we didn't eat any.",
+        "This week we've eaten pizza twice. Last week we didn't eat any."
+      ],
+      "hint": "eat → ate → eaten"
+    },
+    {
+      "id": 3,
+      "question": "Hoy Ana ha comido toda la fruta. Ayer no comió nada.",
+      "accepted": [
+        "Today Ana has eaten all the fruit. Yesterday she didn't eat anything.",
+        "Today Ana has eaten all the fruit. Yesterday she ate nothing."
+      ],
+      "hint": "eat → ate → eaten"
+    },
+    {
+      "id": 4,
       "question": "Esta semana he escrito tres cartas. El lunes no escribí ninguna.",
       "accepted": [
         "This week I have written three letters. On Monday I wrote none.",
@@ -68,7 +86,24 @@
       "hint": "write → wrote → written"
     },
     {
-      "id": 3,
+      "id": 5,
+      "question": "Hoy hemos escrito una redacción sobre el verano. Ayer escribimos un poema.",
+      "accepted": [
+        "Today we have written an essay about summer. Yesterday we wrote a poem.",
+        "Today we've written an essay about summer. Yesterday we wrote a poem."
+      ],
+      "hint": "write → wrote → written"
+    },
+    {
+      "id": 6,
+      "question": "Esta mañana el profesor ha escrito los deberes en la pizarra. Ayer los escribió en papel.",
+      "accepted": [
+        "This morning the teacher has written the homework on the board. Yesterday he wrote it on paper."
+      ],
+      "hint": "write → wrote → written"
+    },
+    {
+      "id": 7,
       "question": "Hoy hemos ido al cine. Ayer no fuimos a ningún sitio.",
       "accepted": [
         "Today we have gone to the cinema. Yesterday we didn't go anywhere.",
@@ -77,7 +112,24 @@
       "hint": "go → went → gone"
     },
     {
-      "id": 4,
+      "id": 8,
+      "question": "Esta semana he ido al médico. La semana pasada fui al dentista.",
+      "accepted": [
+        "This week I have gone to the doctor. Last week I went to the dentist.",
+        "This week I've gone to the doctor. Last week I went to the dentist."
+      ],
+      "hint": "go → went → gone"
+    },
+    {
+      "id": 9,
+      "question": "Hoy papá ha ido al trabajo en bici. Ayer fue en coche.",
+      "accepted": [
+        "Today dad has gone to work by bike. Yesterday he went by car."
+      ],
+      "hint": "go → went → gone"
+    },
+    {
+      "id": 10,
       "question": "Esta semana he aprendido muchas palabras nuevas. La semana pasada no aprendí ninguna.",
       "accepted": [
         "This week I have learnt many new words. Last week I learnt none.",
@@ -86,7 +138,24 @@
       "hint": "learn → learnt → learnt"
     },
     {
-      "id": 5,
+      "id": 11,
+      "question": "Esta semana he aprendido a nadar. El verano pasado aprendí a montar en bici.",
+      "accepted": [
+        "This week I have learnt to swim. Last summer I learnt to ride a bike.",
+        "This week I've learnt to swim. Last summer I learnt to ride a bike."
+      ],
+      "hint": "learn → learnt → learnt"
+    },
+    {
+      "id": 12,
+      "question": "Hoy los niños han aprendido los colores en inglés. Ayer aprendieron los números.",
+      "accepted": [
+        "Today the children have learnt the colours in English. Yesterday they learnt the numbers."
+      ],
+      "hint": "learn → learnt → learnt"
+    },
+    {
+      "id": 13,
       "question": "Hoy he visto una película muy buena. Ayer no vi nada interesante.",
       "accepted": [
         "Today I have seen a very good film. Yesterday I saw nothing interesting.",
@@ -95,7 +164,25 @@
       "hint": "see → saw → seen"
     },
     {
-      "id": 6,
+      "id": 14,
+      "question": "Esta semana hemos visto tres películas. La semana pasada vimos solo una.",
+      "accepted": [
+        "This week we have seen three films. Last week we saw only one.",
+        "This week we've seen three films. Last week we saw only one."
+      ],
+      "hint": "see → saw → seen"
+    },
+    {
+      "id": 15,
+      "question": "Hoy he visto un arcoíris precioso. Ayer vi una tormenta.",
+      "accepted": [
+        "Today I have seen a beautiful rainbow. Yesterday I saw a storm.",
+        "Today I've seen a beautiful rainbow. Yesterday I saw a storm."
+      ],
+      "hint": "see → saw → seen"
+    },
+    {
+      "id": 16,
       "question": "Esta tarde Lucas ha hecho los deberes. Esta mañana no hizo nada.",
       "accepted": [
         "This afternoon Lucas has done his homework. This morning he didn't do anything.",
@@ -104,7 +191,25 @@
       "hint": "do → did → done"
     },
     {
-      "id": 7,
+      "id": 17,
+      "question": "Hoy hemos hecho un experimento en clase. Ayer hicimos un dibujo.",
+      "accepted": [
+        "Today we have done an experiment in class. Yesterday we did a drawing.",
+        "Today we've done an experiment in class. Yesterday we did a drawing."
+      ],
+      "hint": "do → did → done"
+    },
+    {
+      "id": 18,
+      "question": "Esta semana María ha hecho mucho deporte. La semana pasada no hizo nada.",
+      "accepted": [
+        "This week Maria has done a lot of sport. Last week she didn't do anything.",
+        "This week Maria has done a lot of sport. Last week she did nothing."
+      ],
+      "hint": "do → did → done"
+    },
+    {
+      "id": 19,
       "question": "Hoy he tomado el autobús al colegio. Ayer lo tomé y llegué tarde.",
       "accepted": [
         "Today I have taken the bus to school. Yesterday I took it and arrived late.",
@@ -113,7 +218,26 @@
       "hint": "take → took → taken"
     },
     {
-      "id": 8,
+      "id": 20,
+      "question": "Esta mañana hemos tomado el tren. Ayer tomamos el metro.",
+      "accepted": [
+        "This morning we have taken the train. Yesterday we took the underground.",
+        "This morning we've taken the train. Yesterday we took the underground.",
+        "This morning we have taken the train. Yesterday we took the tube.",
+        "This morning we've taken the train. Yesterday we took the tube."
+      ],
+      "hint": "take → took → taken"
+    },
+    {
+      "id": 21,
+      "question": "Hoy Ana ha tomado muchas fotos. Ayer tomó solo dos.",
+      "accepted": [
+        "Today Ana has taken many photos. Yesterday she took only two."
+      ],
+      "hint": "take → took → taken"
+    },
+    {
+      "id": 22,
       "question": "Hoy he conocido a la nueva profesora. El año pasado no la conocí.",
       "accepted": [
         "Today I have met the new teacher. Last year I didn't meet her.",
@@ -122,7 +246,25 @@
       "hint": "meet → met → met"
     },
     {
-      "id": 9,
+      "id": 23,
+      "question": "Hoy he conocido a muchos niños nuevos. Ayer no conocí a nadie.",
+      "accepted": [
+        "Today I have met many new children. Yesterday I didn't meet anyone.",
+        "Today I've met many new children. Yesterday I didn't meet anyone."
+      ],
+      "hint": "meet → met → met"
+    },
+    {
+      "id": 24,
+      "question": "Esta tarde hemos conocido al nuevo entrenador. Ayer conocimos a sus ayudantes.",
+      "accepted": [
+        "This afternoon we have met the new coach. Yesterday we met his assistants.",
+        "This afternoon we've met the new coach. Yesterday we met his assistants."
+      ],
+      "hint": "meet → met → met"
+    },
+    {
+      "id": 25,
       "question": "Hoy he llevado el uniforme del colegio. Ayer llevé ropa normal.",
       "accepted": [
         "Today I have worn the school uniform. Yesterday I wore normal clothes.",
@@ -131,7 +273,24 @@
       "hint": "wear → wore → worn"
     },
     {
-      "id": 10,
+      "id": 26,
+      "question": "Esta tarde hemos llevado disfraces en la fiesta. Ayer llevamos ropa normal.",
+      "accepted": [
+        "This afternoon we have worn costumes at the party. Yesterday we wore normal clothes.",
+        "This afternoon we've worn costumes at the party. Yesterday we wore normal clothes."
+      ],
+      "hint": "wear → wore → worn"
+    },
+    {
+      "id": 27,
+      "question": "Hoy mi hermana ha llevado un vestido rojo. Ayer llevó uno azul.",
+      "accepted": [
+        "Today my sister has worn a red dress. Yesterday she wore a blue one."
+      ],
+      "hint": "wear → wore → worn"
+    },
+    {
+      "id": 28,
       "question": "Esta semana le he enviado muchos mensajes. La semana pasada no le envié ninguno.",
       "accepted": [
         "This week I have sent her many messages. Last week I sent her none.",
@@ -140,16 +299,53 @@
       "hint": "send → sent → sent"
     },
     {
-      "id": 11,
+      "id": 29,
+      "question": "Esta tarde he enviado una postal a mis abuelos. Ayer les envié una carta.",
+      "accepted": [
+        "This afternoon I have sent a postcard to my grandparents. Yesterday I sent them a letter.",
+        "This afternoon I've sent a postcard to my grandparents. Yesterday I sent them a letter."
+      ],
+      "hint": "send → sent → sent"
+    },
+    {
+      "id": 30,
+      "question": "Hoy el profesor ha enviado los deberes por email. Ayer los envió en papel.",
+      "accepted": [
+        "Today the teacher has sent the homework by email. Yesterday he sent it on paper."
+      ],
+      "hint": "send → sent → sent"
+    },
+    {
+      "id": 31,
       "question": "Hoy he perdido mis llaves. Ayer también las perdí.",
       "accepted": [
         "Today I have lost my keys. Yesterday I lost them too.",
-        "Today I've lost my keys. Yesterday I lost them too."
+        "Today I've lost my keys. Yesterday I lost them too.",
+        "Today I have lost my keys. Yesterday I also lost them.",
+        "Today I've lost my keys. Yesterday I also lost them."
       ],
       "hint": "lose → lost → lost"
     },
     {
-      "id": 12,
+      "id": 32,
+      "question": "Esta semana hemos perdido dos partidos. La semana pasada ganamos todos.",
+      "accepted": [
+        "This week we have lost two matches. Last week we won them all.",
+        "This week we've lost two matches. Last week we won them all."
+      ],
+      "hint": "lose → lost → lost"
+    },
+    {
+      "id": 33,
+      "question": "Hoy mi hermana ha perdido su móvil. Ayer perdió sus auriculares.",
+      "accepted": [
+        "Today my sister has lost her mobile. Yesterday she lost her headphones.",
+        "Today my sister has lost her phone. Yesterday she lost her headphones."
+      ],
+      "hint": "lose → lost → lost"
+    },
+    {
+      "id": 34,
       "question": "Hoy he roto un vaso. Ayer rompí el plato.",
       "accepted": [
         "Today I have broken a glass. Yesterday I broke the plate.",
@@ -158,7 +354,24 @@
       "hint": "break → broke → broken"
     },
     {
-      "id": 13,
+      "id": 35,
+      "question": "Esta semana he roto mis gafas. La semana pasada rompí el lápiz.",
+      "accepted": [
+        "This week I have broken my glasses. Last week I broke my pencil.",
+        "This week I've broken my glasses. Last week I broke my pencil."
+      ],
+      "hint": "break → broke → broken"
+    },
+    {
+      "id": 36,
+      "question": "Hoy Ana ha roto la ventana. Ayer rompió un plato.",
+      "accepted": [
+        "Today Ana has broken the window. Yesterday she broke a plate."
+      ],
+      "hint": "break → broke → broken"
+    },
+    {
+      "id": 37,
       "question": "Esta semana hemos volado a Londres. El año pasado volamos a París.",
       "accepted": [
         "This week we have flown to London. Last year we flew to Paris.",
@@ -167,7 +380,24 @@
       "hint": "fly → flew → flown"
     },
     {
-      "id": 14,
+      "id": 38,
+      "question": "Hoy hemos volado en helicóptero. El año pasado volamos en avión pequeño.",
+      "accepted": [
+        "Today we have flown in a helicopter. Last year we flew in a small plane.",
+        "Today we've flown in a helicopter. Last year we flew in a small plane."
+      ],
+      "hint": "fly → flew → flown"
+    },
+    {
+      "id": 39,
+      "question": "Esta tarde el pájaro ha volado muy lejos. Esta mañana voló sobre el jardín.",
+      "accepted": [
+        "This afternoon the bird has flown very far. This morning it flew over the garden."
+      ],
+      "hint": "fly → flew → flown"
+    },
+    {
+      "id": 40,
       "question": "Hoy he puesto mis libros en la mochila. Ayer los puse en la mesa.",
       "accepted": [
         "Today I have put my books in the backpack. Yesterday I put them on the table."
@@ -175,7 +405,24 @@
       "hint": "put → put → put"
     },
     {
-      "id": 15,
+      "id": 41,
+      "question": "Esta tarde he puesto la ropa en el armario. Esta mañana la puse en la silla.",
+      "accepted": [
+        "This afternoon I have put the clothes in the wardrobe. This morning I put them on the chair.",
+        "This afternoon I've put the clothes in the wardrobe. This morning I put them on the chair."
+      ],
+      "hint": "put → put → put"
+    },
+    {
+      "id": 42,
+      "question": "Hoy mamá ha puesto flores en el jarrón. Ayer puso fruta en el frutero.",
+      "accepted": [
+        "Today mum has put flowers in the vase. Yesterday she put fruit in the fruit bowl."
+      ],
+      "hint": "put → put → put"
+    },
+    {
+      "id": 43,
       "question": "Esta tarde he cogido el autobús. Ayer no lo cogí y llegué tarde.",
       "accepted": [
         "This afternoon I have caught the bus. Yesterday I didn't catch it and arrived late.",
@@ -184,7 +431,25 @@
       "hint": "catch → caught → caught"
     },
     {
-      "id": 16,
+      "id": 44,
+      "question": "Hoy he atrapado una mariposa en el jardín. Ayer cogí una rana.",
+      "accepted": [
+        "Today I have caught a butterfly in the garden. Yesterday I caught a frog.",
+        "Today I've caught a butterfly in the garden. Yesterday I caught a frog."
+      ],
+      "hint": "catch → caught → caught"
+    },
+    {
+      "id": 45,
+      "question": "Esta semana la policía ha atrapado al ladrón. La semana pasada no atrapó a nadie.",
+      "accepted": [
+        "This week the police have caught the thief. Last week they didn't catch anyone.",
+        "This week the police have caught the thief. Last week they caught no one."
+      ],
+      "hint": "catch → caught → caught"
+    },
+    {
+      "id": 46,
       "question": "Hoy he dejado mi abrigo en el colegio. Ayer lo dejé en casa.",
       "accepted": [
         "Today I have left my coat at school. Yesterday I left it at home.",
@@ -193,7 +458,24 @@
       "hint": "leave → left → left"
     },
     {
-      "id": 17,
+      "id": 47,
+      "question": "Esta tarde he dejado mi libro en el colegio. Esta mañana lo dejé en casa.",
+      "accepted": [
+        "This afternoon I have left my book at school. This morning I left it at home.",
+        "This afternoon I've left my book at school. This morning I left it at home."
+      ],
+      "hint": "leave → left → left"
+    },
+    {
+      "id": 48,
+      "question": "Hoy Ana ha dejado sus llaves en el coche. Ayer las dejó en el bolso.",
+      "accepted": [
+        "Today Ana has left her keys in the car. Yesterday she left them in her bag."
+      ],
+      "hint": "leave → left → left"
+    },
+    {
+      "id": 49,
       "question": "Esta semana he estado muy ocupado. La semana pasada estuve en casa todo el día.",
       "accepted": [
         "This week I have been very busy. Last week I was at home all day.",
@@ -202,7 +484,25 @@
       "hint": "be → was/were → been"
     },
     {
-      "id": 18,
+      "id": 50,
+      "question": "María ha sido muy amable hoy. Ayer fue un poco antipática.",
+      "accepted": [
+        "Maria has been very kind today. Yesterday she was a little unfriendly.",
+        "Maria has been very nice today. Yesterday she was a little unfriendly."
+      ],
+      "hint": "be → was/were → been"
+    },
+    {
+      "id": 51,
+      "question": "Hoy hemos sido los primeros en llegar. La semana pasada fuimos los últimos.",
+      "accepted": [
+        "Today we have been the first to arrive. Last week we were the last.",
+        "Today we've been the first to arrive. Last week we were the last."
+      ],
+      "hint": "be → was/were → been"
+    },
+    {
+      "id": 52,
       "question": "Esta tarde hemos cortado el pastel juntos. Esta mañana lo cortó mamá sola.",
       "accepted": [
         "This afternoon we have cut the cake together. This morning mum cut it alone.",
@@ -211,7 +511,26 @@
       "hint": "cut → cut → cut"
     },
     {
-      "id": 19,
+      "id": 53,
+      "question": "Hoy me he cortado el pelo. La semana pasada me lo corté también.",
+      "accepted": [
+        "Today I have cut my hair. Last week I cut it too.",
+        "Today I've cut my hair. Last week I cut it too.",
+        "Today I have cut my hair. Last week I also cut it.",
+        "Today I've cut my hair. Last week I also cut it."
+      ],
+      "hint": "cut → cut → cut"
+    },
+    {
+      "id": 54,
+      "question": "Esta mañana papá ha cortado el césped. Ayer cortó los arbustos.",
+      "accepted": [
+        "This morning dad has cut the grass. Yesterday he cut the bushes."
+      ],
+      "hint": "cut → cut → cut"
+    },
+    {
+      "id": 55,
       "question": "Esta semana hemos construido una maqueta. El año pasado construimos una casita de madera.",
       "accepted": [
         "This week we have built a model. Last year we built a little wooden house.",
@@ -220,7 +539,25 @@
       "hint": "build → built → built"
     },
     {
-      "id": 20,
+      "id": 56,
+      "question": "Hoy hemos construido un castillo de arena. Ayer construimos una torre.",
+      "accepted": [
+        "Today we have built a sandcastle. Yesterday we built a tower.",
+        "Today we've built a sandcastle. Yesterday we built a tower."
+      ],
+      "hint": "build → built → built"
+    },
+    {
+      "id": 57,
+      "question": "Este año mi padre ha construido una caseta para el perro. El año pasado construyó un cobertizo.",
+      "accepted": [
+        "This year my dad has built a kennel for the dog. Last year he built a shed.",
+        "This year my father has built a kennel for the dog. Last year he built a shed."
+      ],
+      "hint": "build → built → built"
+    },
+    {
+      "id": 58,
       "question": "Esta mañana he comprado un libro nuevo. Ayer compré un cuaderno.",
       "accepted": [
         "This morning I have bought a new book. Yesterday I bought a notebook.",
@@ -229,7 +566,24 @@
       "hint": "buy → bought → bought"
     },
     {
-      "id": 21,
+      "id": 59,
+      "question": "Esta tarde hemos comprado zapatillas nuevas. Ayer compramos una pelota.",
+      "accepted": [
+        "This afternoon we have bought new trainers. Yesterday we bought a ball.",
+        "This afternoon we've bought new trainers. Yesterday we bought a ball."
+      ],
+      "hint": "buy → bought → bought"
+    },
+    {
+      "id": 60,
+      "question": "Hoy mamá ha comprado fruta en el mercado. Ayer compró verduras.",
+      "accepted": [
+        "Today mum has bought fruit at the market. Yesterday she bought vegetables."
+      ],
+      "hint": "buy → bought → bought"
+    },
+    {
+      "id": 61,
       "question": "Esta tarde he dibujado un retrato. Esta mañana dibujé un paisaje.",
       "accepted": [
         "This afternoon I have drawn a portrait. This morning I drew a landscape.",
@@ -238,7 +592,24 @@
       "hint": "draw → drew → drawn"
     },
     {
-      "id": 22,
+      "id": 62,
+      "question": "Hoy hemos dibujado un mapa del mundo. Ayer dibujamos uno de España.",
+      "accepted": [
+        "Today we have drawn a map of the world. Yesterday we drew one of Spain.",
+        "Today we've drawn a map of the world. Yesterday we drew one of Spain."
+      ],
+      "hint": "draw → drew → drawn"
+    },
+    {
+      "id": 63,
+      "question": "Esta semana Pablo ha dibujado muchos cómics. La semana pasada no dibujó ninguno.",
+      "accepted": [
+        "This week Pablo has drawn many comics. Last week he didn't draw any."
+      ],
+      "hint": "draw → drew → drawn"
+    },
+    {
+      "id": 64,
       "question": "Hoy he bebido mucha agua. Ayer bebí zumo de naranja.",
       "accepted": [
         "Today I have drunk a lot of water. Yesterday I drank orange juice.",
@@ -247,7 +618,25 @@
       "hint": "drink → drank → drunk"
     },
     {
-      "id": 23,
+      "id": 65,
+      "question": "Esta tarde hemos bebido limonada. Esta mañana bebimos leche.",
+      "accepted": [
+        "This afternoon we have drunk lemonade. This morning we drank milk.",
+        "This afternoon we've drunk lemonade. This morning we drank milk."
+      ],
+      "hint": "drink → drank → drunk"
+    },
+    {
+      "id": 66,
+      "question": "Hoy el bebé ha bebido toda la leche. Ayer no bebió nada.",
+      "accepted": [
+        "Today the baby has drunk all the milk. Yesterday it didn't drink anything.",
+        "Today the baby has drunk all the milk. Yesterday it drank nothing."
+      ],
+      "hint": "drink → drank → drunk"
+    },
+    {
+      "id": 67,
       "question": "Hoy papá ha conducido hasta el colegio. Ayer condujo hasta el supermercado.",
       "accepted": [
         "Today dad has driven to school. Yesterday he drove to the supermarket."
@@ -255,7 +644,24 @@
       "hint": "drive → drove → driven"
     },
     {
-      "id": 24,
+      "id": 68,
+      "question": "Esta tarde mi hermano ha conducido por primera vez. Ayer no condujo.",
+      "accepted": [
+        "This afternoon my brother has driven for the first time. Yesterday he didn't drive."
+      ],
+      "hint": "drive → drove → driven"
+    },
+    {
+      "id": 69,
+      "question": "Hoy hemos conducido hasta la playa. La semana pasada condujimos a la montaña.",
+      "accepted": [
+        "Today we have driven to the beach. Last week we drove to the mountains.",
+        "Today we've driven to the beach. Last week we drove to the mountains."
+      ],
+      "hint": "drive → drove → driven"
+    },
+    {
+      "id": 70,
       "question": "Esta semana he tenido mucha suerte. La semana pasada no tuve ninguna.",
       "accepted": [
         "This week I have had a lot of luck. Last week I had none.",
@@ -264,7 +670,24 @@
       "hint": "have → had → had"
     },
     {
-      "id": 25,
+      "id": 71,
+      "question": "Hoy hemos tenido un día fantástico. Ayer tuvimos un día horrible.",
+      "accepted": [
+        "Today we have had a fantastic day. Yesterday we had a horrible day.",
+        "Today we've had a fantastic day. Yesterday we had a horrible day."
+      ],
+      "hint": "have → had → had"
+    },
+    {
+      "id": 72,
+      "question": "Esta mañana el gato ha tenido tres gatitos. El año pasado tuvo dos.",
+      "accepted": [
+        "This morning the cat has had three kittens. Last year she had two."
+      ],
+      "hint": "have → had → had"
+    },
+    {
+      "id": 73,
       "question": "Hoy he oído una canción preciosa. Ayer oí un ruido extraño.",
       "accepted": [
         "Today I have heard a beautiful song. Yesterday I heard a strange noise.",
@@ -273,7 +696,27 @@
       "hint": "hear → heard → heard"
     },
     {
-      "id": 26,
+      "id": 74,
+      "question": "Esta tarde hemos oído truenos. Esta mañana oímos pájaros cantando.",
+      "accepted": [
+        "This afternoon we have heard thunder. This morning we heard birds singing.",
+        "This afternoon we've heard thunder. This morning we heard birds singing."
+      ],
+      "hint": "hear → heard → heard"
+    },
+    {
+      "id": 75,
+      "question": "Hoy he oído la nueva canción de mi grupo favorito. Ayer oí una muy aburrida.",
+      "accepted": [
+        "Today I have heard the new song by my favourite band. Yesterday I heard a very boring one.",
+        "Today I've heard the new song by my favourite band. Yesterday I heard a very boring one.",
+        "Today I have heard the new song by my favorite band. Yesterday I heard a very boring one.",
+        "Today I've heard the new song by my favorite band. Yesterday I heard a very boring one."
+      ],
+      "hint": "hear → heard → heard"
+    },
+    {
+      "id": 76,
       "question": "Este mes he guardado todos mis cromos. El mes pasado los perdí todos.",
       "accepted": [
         "This month I have kept all my stickers. Last month I lost them all.",
@@ -282,7 +725,24 @@
       "hint": "keep → kept → kept"
     },
     {
-      "id": 27,
+      "id": 77,
+      "question": "Esta semana he guardado todos mis apuntes. La semana pasada los perdí todos.",
+      "accepted": [
+        "This week I have kept all my notes. Last week I lost them all.",
+        "This week I've kept all my notes. Last week I lost them all."
+      ],
+      "hint": "keep → kept → kept"
+    },
+    {
+      "id": 78,
+      "question": "Hoy el perro ha guardado la pelota. Ayer la dejó en el jardín.",
+      "accepted": [
+        "Today the dog has kept the ball. Yesterday it left it in the garden."
+      ],
+      "hint": "keep → kept → kept"
+    },
+    {
+      "id": 79,
       "question": "Siempre he sabido que eres muy listo. Ayer lo supe con certeza.",
       "accepted": [
         "I have always known that you are very clever. Yesterday I knew it for sure.",
@@ -291,7 +751,54 @@
       "hint": "know → knew → known"
     },
     {
-      "id": 28,
+      "id": 80,
+      "question": "Siempre he sabido que el fútbol es tu deporte favorito. Ayer lo supe con certeza.",
+      "accepted": [
+        "I have always known that football is your favourite sport. Yesterday I knew it for sure.",
+        "I've always known that football is your favourite sport. Yesterday I knew it for sure.",
+        "I have always known that football is your favorite sport. Yesterday I knew it for sure.",
+        "I've always known that football is your favorite sport. Yesterday I knew it for sure."
+      ],
+      "hint": "know → knew → known"
+    },
+    {
+      "id": 81,
+      "question": "Esta semana hemos sabido la respuesta correcta. La semana pasada no la supimos.",
+      "accepted": [
+        "This week we have known the correct answer. Last week we didn't know it.",
+        "This week we've known the correct answer. Last week we didn't know it."
+      ],
+      "hint": "know → knew → known"
+    },
+    {
+      "id": 82,
+      "question": "Esta tarde Lucas ha hecho una tarta. Esta mañana no hizo nada especial.",
+      "accepted": [
+        "This afternoon Lucas has made a cake. This morning he didn't make anything special.",
+        "This afternoon Lucas has made a cake. This morning he made nothing special."
+      ],
+      "hint": "make → made → made"
+    },
+    {
+      "id": 83,
+      "question": "Esta tarde hemos hecho una pulsera. Esta mañana hicimos un collar.",
+      "accepted": [
+        "This afternoon we have made a bracelet. This morning we made a necklace.",
+        "This afternoon we've made a bracelet. This morning we made a necklace."
+      ],
+      "hint": "make → made → made"
+    },
+    {
+      "id": 84,
+      "question": "Hoy he hecho mi cama. Ayer no la hice.",
+      "accepted": [
+        "Today I have made my bed. Yesterday I didn't make it.",
+        "Today I've made my bed. Yesterday I didn't make it."
+      ],
+      "hint": "make → made → made"
+    },
+    {
+      "id": 85,
       "question": "Hoy he leído dos capítulos del libro. Ayer no leí ninguno.",
       "accepted": [
         "Today I have read two chapters of the book. Yesterday I didn't read any.",
@@ -300,7 +807,24 @@
       "hint": "read → read → read (¡misma forma, distinta pronunciación!)"
     },
     {
-      "id": 29,
+      "id": 86,
+      "question": "Esta semana hemos leído un libro muy interesante. La semana pasada leímos uno aburrido.",
+      "accepted": [
+        "This week we have read a very interesting book. Last week we read a boring one.",
+        "This week we've read a very interesting book. Last week we read a boring one."
+      ],
+      "hint": "read → read → read"
+    },
+    {
+      "id": 87,
+      "question": "Hoy papá ha leído el periódico. Ayer leyó una revista.",
+      "accepted": [
+        "Today dad has read the newspaper. Yesterday he read a magazine."
+      ],
+      "hint": "read → read → read"
+    },
+    {
+      "id": 88,
       "question": "Hoy he corrido cinco kilómetros. Ayer corrí solo dos.",
       "accepted": [
         "Today I have run five kilometres. Yesterday I ran only two.",
@@ -311,7 +835,24 @@
       "hint": "run → ran → run"
     },
     {
-      "id": 30,
+      "id": 89,
+      "question": "Esta tarde hemos corrido en el parque. Esta mañana corrimos en el gimnasio.",
+      "accepted": [
+        "This afternoon we have run in the park. This morning we ran in the gym.",
+        "This afternoon we've run in the park. This morning we ran in the gym."
+      ],
+      "hint": "run → ran → run"
+    },
+    {
+      "id": 90,
+      "question": "Hoy mi perro ha corrido muy rápido. Ayer corrió más despacio.",
+      "accepted": [
+        "Today my dog has run very fast. Yesterday it ran more slowly."
+      ],
+      "hint": "run → ran → run"
+    },
+    {
+      "id": 91,
       "question": "Hoy he pensado en una buena idea. Ayer pensé en algo diferente.",
       "accepted": [
         "Today I have thought of a good idea. Yesterday I thought of something different.",
@@ -320,7 +861,25 @@
       "hint": "think → thought → thought"
     },
     {
-      "id": 31,
+      "id": 92,
+      "question": "Esta noche he pensado mucho en ti. Anoche pensé en el viaje.",
+      "accepted": [
+        "Tonight I have thought a lot about you. Last night I thought about the trip.",
+        "Tonight I've thought a lot about you. Last night I thought about the trip."
+      ],
+      "hint": "think → thought → thought"
+    },
+    {
+      "id": 93,
+      "question": "Hoy hemos pensado en una solución. Ayer pensamos en el problema.",
+      "accepted": [
+        "Today we have thought of a solution. Yesterday we thought about the problem.",
+        "Today we've thought of a solution. Yesterday we thought about the problem."
+      ],
+      "hint": "think → thought → thought"
+    },
+    {
+      "id": 94,
       "question": "Esta semana hemos ganado el partido. La semana pasada lo perdimos.",
       "accepted": [
         "This week we have won the match. Last week we lost it.",
@@ -329,22 +888,21 @@
       "hint": "win → won → won"
     },
     {
-      "id": 32,
-      "question": "Esta tarde Lucas ha hecho una tarta. Esta mañana no hizo nada especial.",
+      "id": 95,
+      "question": "Esta tarde hemos ganado el torneo de ajedrez. Ayer ganamos el de fútbol.",
       "accepted": [
-        "This afternoon Lucas has made a cake. This morning he didn't make anything special.",
-        "This afternoon Lucas has made a cake. This morning he made nothing special."
+        "This afternoon we have won the chess tournament. Yesterday we won the football one.",
+        "This afternoon we've won the chess tournament. Yesterday we won the football one."
       ],
-      "hint": "make → made → made"
+      "hint": "win → won → won"
     },
     {
-      "id": 33,
-      "question": "Hoy he conocido a muchos niños nuevos. Ayer no conocí a nadie.",
+      "id": 96,
+      "question": "Hoy Carlos ha ganado el primer premio. El año pasado ganó el segundo.",
       "accepted": [
-        "Today I have met many new children. Yesterday I didn't meet anyone.",
-        "Today I've met many new children. Yesterday I didn't meet anyone."
+        "Today Carlos has won first prize. Last year he won second prize."
       ],
-      "hint": "meet → met → met"
+      "hint": "win → won → won"
     }
   ]
 }
