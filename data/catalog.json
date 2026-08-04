@@ -7,5 +7,15 @@
     "file": "data/english/irregular-verbs-pp.json",
     "icon": "🇬🇧",
     "level": "5º Primaria"
+  },
+  {
+    "id": "math-game",
+    "subject": "math",
+    "title": "Multiplicar y Sumar",
+    "description": "Juego contrarreloj para practicar las tablas de multiplicar y sumas. Guarda tu mejor tiempo y consulta las tablas.",
+    "icon": "🎮",
+    "level": "Primaria",
+    "type": "game",
+    "url": "math-game.html"
   }
 ]

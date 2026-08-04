@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplicar y Sumar – AI Teacher</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Tone.js para efectos de sonido -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <!-- Estilos comunes del sitio (cabecera, navegación) -->
+    <link rel="stylesheet" href="css/style.css" />
+
+    <style>
+        /* Estilos base con la nueva fuente */
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: #89f7fe; /* Degradado de fondo azul claro a cian */
+            background: linear-gradient(to bottom, #89f7fe, #66a6ff);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Clase para un efecto de 'presionado' en los botones */
+        .btn-press-effect:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* CORRECCIÓN: Animación de 'shake' que faltaba */
+        @keyframes shake {
+          10%, 90% { transform: translateX(-1px); }
+          20%, 80% { transform: translateX(2px); }
+          30%, 50%, 70% { transform: translateX(-4px); }
+          40%, 60% { transform: translateX(4px); }
+        }
+        .animate-shake {
+            animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+    <header class="page-header">
+      <a href="index.html" class="back-link" title="Volver al inicio">←</a>
+      <span class="logo">🧮</span>
+      <div>
+        <h1>Multiplicar y Sumar</h1>
+        <p class="subtitle">Practica tablas y sumas contrarreloj</p>
+      </div>
+    </header>
+
+    <div class="min-h-[80vh] w-full flex items-center justify-center p-4">
+        <div class="w-full max-w-lg mx-auto">
+
+            <!-- 1. Pantalla de Inicio -->
+            <div id="home-screen" class="text-center space-y-6">
+                <h1 class="text-6xl md:text-8xl font-black text-white text-shadow-lg" style="text-shadow: 4px 4px 0px rgba(0,0,0,0.15);">¡A Jugar!</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white/50 rounded-2xl shadow-xl">
+                    <!-- Botones de Juego -->
+                    <button id="start-multiplication-btn" class="w-full bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-5 px-6 rounded-2xl text-2xl shadow-lg border-b-4 border-yellow-600 btn-press-effect transition-all">
+                        Multiplicar
+                    </button>
+                    <button id="start-addition-btn" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-5 px-6 rounded-2xl text-2xl shadow-lg border-b-4 border-pink-700 btn-press-effect transition-all">
+                        Sumar
+                    </button>
+                    <!-- Botones de Resultados -->
+                    <button id="scores-multiplication-btn" class="bg-sky-400 hover:bg-sky-500 text-white font-bold py-3 px-4 rounded-xl text-lg shadow-md border-b-4 border-sky-600 btn-press-effect transition-all">
+                        Clasificación (x)
+                    </button>
+                    <button id="scores-addition-btn" class="bg-green-400 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl text-lg shadow-md border-b-4 border-green-600 btn-press-effect transition-all">
+                        Clasificación (+)
+                    </button>
+                </div>
+                 <button id="view-tables-btn" class="w-1/2 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl text-lg shadow-md border-b-4 border-indigo-700 btn-press-effect transition-all">
+                    Ver Tablas
+                </button>
+            </div>
+
+            <!-- Selección de tablas (solo modo Multiplicar) -->
+            <div id="picker-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl w-full">
+                <h2 class="text-3xl font-black text-slate-700 mb-1 text-center">¿Qué tablas quieres practicar?</h2>
+                <p class="text-center text-slate-500 font-bold mb-4">Toca para elegir una o varias</p>
+                <div id="tables-picker-grid" class="grid grid-cols-5 gap-2 mb-4"></div>
+                <p id="picker-error" class="hidden text-red-500 font-bold text-center mb-3">Elige al menos una tabla</p>
+                <button id="picker-continue-btn" class="w-full bg-lime-500 hover:bg-lime-600 text-white font-black py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-lime-700 btn-press-effect transition-all">
+                    Continuar →
+                </button>
+                <button id="picker-back-btn" class="w-full mt-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">
+                    Volver
+                </button>
+            </div>
+
+            <!-- Modal para introducir el nombre -->
+            <div id="name-modal" class="hidden bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl text-center">
+                 <h2 class="text-3xl font-black text-slate-700 mb-4">¿Cómo te llamas?</h2>
+                 <input type="text" id="player-name-input" maxlength="16" placeholder="Tu nombre" class="w-full border-4 border-slate-300 rounded-lg p-3 text-center text-xl focus:outline-none focus:ring-4 focus:ring-yellow-400 transition-all">
+                 <button id="start-game-btn" class="w-full mt-4 bg-lime-500 hover:bg-lime-600 text-white font-black py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-lime-700 btn-press-effect transition-all">
+                     ¡Empezar!
+                 </button>
+                 <button id="cancel-name-btn" class="w-full mt-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">
+                     Volver
+                 </button>
+            </div>
+
+            <!-- 2. Pantalla de Juego -->
+            <div id="game-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl w-full">
+                <div class="flex justify-between items-center mb-6 gap-2">
+                    <div id="player-info" class="text-lg font-bold text-indigo-600 bg-white px-3 py-1 rounded-lg"></div>
+                    <div id="score-display" class="text-lg font-black text-pink-600 bg-white px-3 py-1 rounded-lg">0 pts</div>
+                    <div id="timer" class="text-3xl font-black text-slate-700 bg-white px-4 py-2 rounded-lg shadow-inner">00:00</div>
+                </div>
+
+                <div class="text-center">
+                    <div id="progress-bar" class="text-base text-slate-500 mb-4 font-bold"></div>
+                    <div id="problem" class="text-7xl md:text-8xl font-black text-slate-700 my-8"></div>
+
+                    <form id="answer-form">
+                        <input type="number" id="answer-input" class="w-full text-center text-5xl p-4 bg-transparent border-b-8 border-slate-300 focus:border-yellow-400 focus:outline-none transition-colors duration-300" placeholder="?" autocomplete="off">
+                        <button type="submit" class="hidden">Enviar</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 3. Pantalla de Resultados -->
+            <div id="scores-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl w-full">
+                <h2 id="scores-title" class="text-4xl text-center font-black mb-6"></h2>
+                <p id="your-result" class="hidden text-center text-lg font-black text-indigo-700 bg-indigo-100 rounded-xl py-2 px-3 mb-4"></p>
+                <div id="high-scores-list" class="space-y-2"></div>
+                <button id="play-again-from-scores-btn" class="w-full mt-8 bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-yellow-600 btn-press-effect transition-all">
+                    Jugar de Nuevo
+                </button>
+                 <button id="back-to-home-from-scores-btn" class="w-full mt-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">
+                     Volver al Inicio
+                 </button>
+            </div>
+
+            <!-- 4. Pantalla para mostrar las tablas -->
+            <div id="tables-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl w-full">
+                <h2 class="text-4xl text-center font-black text-indigo-600 mb-6">Tablas de Multiplicar</h2>
+                <div id="tables-container" class="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-left max-h-[60vh] overflow-y-auto p-2"></div>
+                <button id="back-from-tables-btn" class="w-full mt-8 bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-sky-700 btn-press-effect transition-all">
+                    Volver
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import {
+            formatTime,
+            computeAnswerScore,
+            generateMultiplicationProblems,
+            addScoreEntry,
+        } from "./js/math-game-logic.js";
+
+        // --- ELEMENTOS DEL DOM ---
+        const allScreens = {
+            home: document.getElementById('home-screen'),
+            picker: document.getElementById('picker-screen'),
+            name: document.getElementById('name-modal'),
+            game: document.getElementById('game-screen'),
+            scores: document.getElementById('scores-screen'),
+            tables: document.getElementById('tables-screen'),
+        };
+
+        const playerNameInput = document.getElementById('player-name-input');
+        const playerInfo = document.getElementById('player-info');
+        const scoreDisplay = document.getElementById('score-display');
+        const timerEl = document.getElementById('timer');
+        const problemEl = document.getElementById('problem');
+        const answerInput = document.getElementById('answer-input');
+        const answerForm = document.getElementById('answer-form');
+        const progressBar = document.getElementById('progress-bar');
+        const scoresTitle = document.getElementById('scores-title');
+        const yourResultEl = document.getElementById('your-result');
+        const highScoresList = document.getElementById('high-scores-list');
+        const tablesContainer = document.getElementById('tables-container');
+        const tablesPickerGrid = document.getElementById('tables-picker-grid');
+        const pickerError = document.getElementById('picker-error');
+
+        // --- ESTADO Y DATOS DEL JUEGO ---
+        const STORAGE_PREFIX = 'aiTeacherMathGame:';
+        let selectedTables = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        let currentGameMode = ''; // 'multiplication' or 'addition'
+        let currentPlayer = '';
+        let currentProblems = [];
+        let currentProblemIndex = 0;
+        let currentScore = 0;
+        let questionStartTime = 0;
+        let timerInterval;
+        let secondsElapsed = 0;
+        let audioStarted = false;
+
+        // --- EFECTOS DE SONIDO (Tone.js) ---
+        const correctSound = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.5 } }).toDestination();
+        const wrongSound = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.005, decay: 0.2, sustain: 0, release: 0.2 } }).toDestination();
+
+        // --- LÓGICA DE NAVEGACIÓN Y JUEGO ---
+        function showScreen(screenId) {
+            Object.values(allScreens).forEach(screen => screen.classList.add('hidden'));
+            allScreens[screenId].classList.remove('hidden');
+        }
+
+        async function startAudioContext() {
+            if (!audioStarted) {
+                await Tone.start();
+                audioStarted = true;
+                console.log('Audio context started');
+            }
+        }
+
+        function prepareNewGame(mode) {
+            startAudioContext(); // Iniciar audio en la primera interacción
+            currentGameMode = mode;
+            if (mode === 'multiplication') {
+                renderTablePicker();
+                showScreen('picker');
+            } else {
+                showScreen('name');
+                playerNameInput.focus();
+            }
+        }
+
+        function tablePickerButtonClasses(active) {
+            const base = 'py-4 rounded-xl text-2xl font-black shadow-md border-b-4 btn-press-effect transition-all';
+            return active
+                ? `${base} bg-indigo-500 text-white border-indigo-700`
+                : `${base} bg-white text-indigo-500 border-slate-300`;
+        }
+
+        function renderTablePicker() {
+            tablesPickerGrid.innerHTML = '';
+            for (let table = 1; table <= 10; table++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = table;
+                btn.setAttribute('aria-pressed', selectedTables.has(table));
+                btn.className = tablePickerButtonClasses(selectedTables.has(table));
+                btn.addEventListener('click', () => {
+                    if (selectedTables.has(table)) {
+                        selectedTables.delete(table);
+                    } else {
+                        selectedTables.add(table);
+                    }
+                    btn.setAttribute('aria-pressed', selectedTables.has(table));
+                    btn.className = tablePickerButtonClasses(selectedTables.has(table));
+                    pickerError.classList.add('hidden');
+                });
+                tablesPickerGrid.appendChild(btn);
+            }
+        }
+
+        function generateAdditionProblems(count) {
+            const problems = [];
+            let attempts = 0; // Evitar bucles infinitos
+            while (problems.length < count && attempts < 100) {
+                const targetSum = Math.floor(Math.random() * 21) + 5; // Suma entre 5 y 25
+                const num1 = Math.floor(Math.random() * (targetSum - 2)) + 1; // num1 entre 1 y (suma-2)
+                const num2 = targetSum - num1;
+                // Nos aseguramos que num2 no sea menor que 1
+                if (num2 > 0) {
+                    problems.push({ question: `${num1} + ${num2}`, answer: targetSum });
+                }
+                attempts++;
+            }
+            return problems;
+        }
+
+        function startGame() {
+            const name = playerNameInput.value.trim();
+            if (!name) {
+                playerNameInput.classList.add('border-red-500');
+                // Añadimos la clase de la animación
+                playerNameInput.classList.add('animate-shake');
+                // La quitamos cuando termina para poder reusarla
+                setTimeout(() => {
+                    playerNameInput.classList.remove('border-red-500');
+                    playerNameInput.classList.remove('animate-shake');
+                }, 820);
+                return;
+            }
+            currentPlayer = name;
+            currentScore = 0;
+            updateScoreDisplay();
+
+            if (currentGameMode === 'multiplication') {
+                currentProblems = generateMultiplicationProblems(Array.from(selectedTables), 10);
+            } else {
+                currentProblems = generateAdditionProblems(10);
+            }
+
+            currentProblemIndex = 0;
+            showScreen('game');
+            playerInfo.textContent = currentPlayer;
+            displayNextProblem();
+            startTimer();
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `${currentScore} pts`;
+        }
+
+        function displayNextProblem() {
+            const problem = currentProblems[currentProblemIndex];
+            const operator = currentGameMode === 'multiplication' ? 'x' : '+';
+            problemEl.innerHTML = problem.question.replace(operator, `<span class="mx-2 sm:mx-4 text-pink-500">${operator}</span>`) + ' = ?';
+            answerInput.value = '';
+            answerInput.focus();
+            progressBar.textContent = `Pregunta ${currentProblemIndex + 1} de 10`;
+            questionStartTime = Date.now();
+        }
+
+        function checkAnswer(e) {
+            e.preventDefault();
+            const userAnswer = parseInt(answerInput.value, 10);
+            const correctAnswer = currentProblems[currentProblemIndex].answer;
+            const isCorrect = userAnswer === correctAnswer;
+            const elapsed = Date.now() - questionStartTime;
+
+            currentScore += computeAnswerScore(isCorrect, elapsed);
+            updateScoreDisplay();
+
+            if (isCorrect) {
+                correctSound.triggerAttackRelease("C5", "8n", Tone.now());
+                currentProblemIndex++;
+                if (currentProblemIndex < currentProblems.length) {
+                    allScreens.game.classList.add('correct-answer-flash');
+                    setTimeout(() => {
+                        allScreens.game.classList.remove('correct-answer-flash');
+                        displayNextProblem();
+                    }, 300);
+                } else {
+                    endGame();
+                }
+            } else {
+                wrongSound.triggerAttackRelease("A2", "8n", Tone.now());
+                answerInput.value = '';
+                answerInput.classList.add('bg-red-200');
+                setTimeout(() => answerInput.classList.remove('bg-red-200'), 500);
+            }
+        }
+
+        function endGame() {
+            stopTimer();
+            const entry = {
+                name: currentPlayer,
+                points: currentScore,
+                time: secondsElapsed,
+                date: new Date().toLocaleDateString('es-ES'),
+            };
+            const updated = addScoreEntry(loadScores(currentGameMode), entry);
+            saveScores(currentGameMode, updated);
+            setTimeout(() => {
+                renderHighScores(currentGameMode, updated, entry);
+                showScreen('scores');
+            }, 100);
+        }
+
+        function startTimer() {
+            secondsElapsed = 0;
+            timerEl.textContent = '00:00';
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                timerEl.textContent = formatTime(secondsElapsed);
+            }, 1000);
+        }
+
+        function stopTimer() { clearInterval(timerInterval); }
+
+        // --- PUNTUACIONES (PERSISTIDAS EN localStorage) ---
+        function loadScores(mode) {
+            try {
+                const raw = localStorage.getItem(STORAGE_PREFIX + mode);
+                return raw ? JSON.parse(raw) : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function saveScores(mode, scores) {
+            try {
+                localStorage.setItem(STORAGE_PREFIX + mode, JSON.stringify(scores));
+            } catch {
+                // localStorage no disponible (privado / cuota): el ranking no persiste esta vez
+            }
+        }
+
+        function escHtml(str) {
+            return String(str).replace(/[&<>"']/g, (c) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+            }[c]));
+        }
+
+        function displayHighScores(mode, justPlayedEntry = null) {
+            renderHighScores(mode, loadScores(mode), justPlayedEntry);
+        }
+
+        function renderHighScores(mode, scores, justPlayedEntry = null) {
+            scoresTitle.textContent = mode === 'multiplication' ? 'Clasificación (x)' : 'Clasificación (+)';
+            scoresTitle.className = "text-4xl text-center font-black mb-6 " + (mode === 'multiplication' ? 'text-sky-600' : 'text-green-600');
+
+            if (justPlayedEntry) {
+                yourResultEl.classList.remove('hidden');
+                yourResultEl.textContent = `¡Has conseguido ${justPlayedEntry.points} puntos en ${formatTime(justPlayedEntry.time)}!`;
+            } else {
+                yourResultEl.classList.add('hidden');
+            }
+
+            highScoresList.innerHTML = '';
+
+            if (scores.length === 0) {
+                highScoresList.innerHTML = '<p class="text-center text-slate-500 font-bold p-4">¡Aún no hay puntuaciones!</p>';
+                return;
+            }
+
+            const medals = ['🥇', '🥈', '🥉'];
+            scores.forEach((score, index) => {
+                const scoreEl = document.createElement('div');
+                const isNew = score === justPlayedEntry;
+                scoreEl.className = 'grid grid-cols-12 gap-2 items-center text-lg p-3 rounded-lg font-bold transition-all';
+                scoreEl.classList.add(isNew ? 'bg-yellow-200/90' : (index % 2 === 0 ? 'bg-white/90' : 'bg-slate-200/90'));
+                scoreEl.innerHTML = `
+                    <div class="col-span-2 text-center text-2xl">${medals[index] || (index + 1)}</div>
+                    <div class="col-span-4 text-slate-700 truncate">${escHtml(score.name)}</div>
+                    <div class="col-span-3 text-center text-indigo-600">${score.points} pts</div>
+                    <div class="col-span-3 text-right text-slate-500 text-base">${formatTime(score.time)}</div>
+                `;
+                highScoresList.appendChild(scoreEl);
+            });
+        }
+
+        // --- TABLAS DE MULTIPLICAR ---
+        function displayMultiplicationTables() {
+            tablesContainer.innerHTML = '';
+            for (let i = 2; i <= 10; i++) {
+                const tableDiv = document.createElement('div');
+                tableDiv.className = 'p-3 bg-white/90 rounded-lg shadow-sm';
+                let tableHTML = `<h3 class="font-bold text-lg text-indigo-700 mb-2">Tabla del ${i}</h3><ul class="space-y-1 text-slate-600 font-bold">`;
+                for (let j = 1; j <= 10; j++) {
+                    tableHTML += `<li>${i} &times; ${j} = <span class="text-pink-600">${i * j}</span></li>`;
+                }
+                tableHTML += '</ul>';
+                tableDiv.innerHTML = tableHTML;
+                tablesContainer.appendChild(tableDiv);
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('start-multiplication-btn').addEventListener('click', () => prepareNewGame('multiplication'));
+        document.getElementById('start-addition-btn').addEventListener('click', () => prepareNewGame('addition'));
+        document.getElementById('picker-continue-btn').addEventListener('click', () => {
+            if (selectedTables.size === 0) {
+                pickerError.classList.remove('hidden');
+                return;
+            }
+            showScreen('name');
+            playerNameInput.focus();
+        });
+        document.getElementById('picker-back-btn').addEventListener('click', () => showScreen('home'));
+        document.getElementById('cancel-name-btn').addEventListener('click', () => showScreen('home'));
+        document.getElementById('start-game-btn').addEventListener('click', startGame);
+        playerNameInput.addEventListener('keyup', (e) => { if(e.key === 'Enter') startGame(); });
+        answerForm.addEventListener('submit', checkAnswer);
+        document.getElementById('scores-multiplication-btn').addEventListener('click', () => { displayHighScores('multiplication'); showScreen('scores'); });
+        document.getElementById('scores-addition-btn').addEventListener('click', () => { displayHighScores('addition'); showScreen('scores'); });
+        document.getElementById('play-again-from-scores-btn').addEventListener('click', () => prepareNewGame(currentGameMode));
+        document.getElementById('back-to-home-from-scores-btn').addEventListener('click', () => showScreen('home'));
+        document.getElementById('view-tables-btn').addEventListener('click', () => { displayMultiplicationTables(); showScreen('tables'); });
+        document.getElementById('back-from-tables-btn').addEventListener('click', () => showScreen('home'));
+
+        // --- INICIALIZACIÓN ---
+        showScreen('home');
+    </script>
+</body>
+</html>

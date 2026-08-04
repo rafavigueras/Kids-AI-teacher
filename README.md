@@ -28,13 +28,15 @@ Fichas de ejercicios con modo estudio y quiz. Funciona en iPad sin instalación.
 ├── study.html           ← modo Estudiar (tabla + modo repaso)
 ├── exercise.html        ← modo Practicar (quiz)
 ├── leaderboard.html     ← top 10 por ficha
+├── math-game.html       ← juego de Multiplicar y Sumar contrarreloj
 ├── css/style.css        ← diseño unificado
 ├── js/
 │   ├── catalog.js       ← carga el catálogo
 │   ├── study.js         ← lógica modo estudio
 │   ├── exercise.js      ← lógica del quiz
 │   ├── checker.js       ← corrector de respuestas
-│   └── leaderboard.js   ← ranking en localStorage
+│   ├── leaderboard.js   ← ranking en localStorage
+│   └── math-game-logic.js ← lógica del juego de mates (tests en .test.js)
 └── data/
     ├── catalog.json     ← índice de fichas disponibles
     └── english/

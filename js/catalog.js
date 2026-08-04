@@ -33,6 +33,13 @@ function renderCards(sheets, container) {
     for (const sheet of items) {
       const card = document.createElement("div");
       card.className = "card";
+      const actions =
+        sheet.type === "game"
+          ? `<a href="${sheet.url}" class="btn btn-primary" style="width:100%">🎮 Jugar</a>`
+          : `
+          <a href="study.html?sheet=${encodeURIComponent(sheet.file)}&id=${sheet.id}" class="btn btn-secondary">📖 Estudiar</a>
+          <a href="exercise.html?sheet=${encodeURIComponent(sheet.file)}&id=${sheet.id}" class="btn btn-primary">✏️ Practicar</a>
+        `;
       card.innerHTML = `
         <div class="card-icon">${sheet.icon}</div>
         <div class="card-body">
@@ -40,10 +47,7 @@ function renderCards(sheets, container) {
           <p class="card-level">${sheet.level}</p>
           <p class="card-desc">${sheet.description}</p>
         </div>
-        <div class="card-actions">
-          <a href="study.html?sheet=${encodeURIComponent(sheet.file)}&id=${sheet.id}" class="btn btn-secondary">📖 Estudiar</a>
-          <a href="exercise.html?sheet=${encodeURIComponent(sheet.file)}&id=${sheet.id}" class="btn btn-primary">✏️ Practicar</a>
-        </div>
+        <div class="card-actions">${actions}</div>
       `;
       grid.appendChild(card);
     }
