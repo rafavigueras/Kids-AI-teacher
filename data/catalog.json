@@ -17,5 +17,15 @@
     "level": "Primaria",
     "type": "game",
     "url": "math-game.html"
+  },
+  {
+    "id": "french-numbers",
+    "subject": "french",
+    "title": "Números en Francés (1–100)",
+    "description": "Aprende cómo se forman los números del 1 al 100 en francés y practica escribiéndolos sin pistas. Con ranking.",
+    "icon": "🇫🇷",
+    "level": "5º Primaria",
+    "type": "game",
+    "url": "french-numbers.html"
   }
 ]

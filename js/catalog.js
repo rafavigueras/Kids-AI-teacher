@@ -7,6 +7,7 @@ async function loadCatalog() {
 function subjectLabel(subject) {
   const labels = {
     english: "Inglés",
+    french: "Francés",
     math: "Matemáticas",
     spanish: "Lengua",
     science: "Science",

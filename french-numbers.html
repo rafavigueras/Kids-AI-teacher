@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Números en Francés – AI Teacher</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Tone.js para efectos de sonido -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <!-- Estilos comunes del sitio (cabecera, navegación) -->
+    <link rel="stylesheet" href="css/style.css" />
+
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: #a1c4fd; /* Degradado azul suave */
+            background: linear-gradient(to bottom, #c2e9fb, #a1c4fd);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .btn-press-effect:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        @keyframes shake {
+          10%, 90% { transform: translateX(-1px); }
+          20%, 80% { transform: translateX(2px); }
+          30%, 50%, 70% { transform: translateX(-4px); }
+          40%, 60% { transform: translateX(4px); }
+        }
+        .animate-shake {
+            animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+    <header class="page-header">
+      <a href="index.html" class="back-link" title="Volver al inicio">←</a>
+      <span class="logo">🇫🇷</span>
+      <div>
+        <h1>Números en Francés</h1>
+        <p class="subtitle">Aprende a escribir del 1 al 100</p>
+      </div>
+    </header>
+
+    <div class="min-h-[80vh] w-full flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl mx-auto">
+
+            <!-- 1. Pantalla de Inicio -->
+            <div id="home-screen" class="text-center space-y-6 max-w-lg mx-auto">
+                <h1 class="text-5xl md:text-7xl font-black text-white" style="text-shadow: 4px 4px 0px rgba(0,0,0,0.15);">Les nombres</h1>
+                <div class="grid grid-cols-1 gap-4 p-4 bg-white/50 rounded-2xl shadow-xl">
+                    <button id="learn-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-6 rounded-2xl text-2xl shadow-lg border-b-4 border-blue-800 btn-press-effect transition-all">
+                        📖 Aprender
+                    </button>
+                    <button id="practice-btn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-5 px-6 rounded-2xl text-2xl shadow-lg border-b-4 border-red-700 btn-press-effect transition-all">
+                        ✏️ Practicar
+                    </button>
+                    <button id="ranking-btn" class="w-full bg-sky-400 hover:bg-sky-500 text-white font-bold py-3 px-4 rounded-xl text-lg shadow-md border-b-4 border-sky-600 btn-press-effect transition-all">
+                        🏆 Ranking
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Aprender -->
+            <div id="learn-screen" class="hidden bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl shadow-2xl w-full">
+                <div id="learn-tabs" class="flex flex-wrap gap-2 justify-center mb-4"></div>
+                <p id="learn-rule" class="bg-blue-50 border-l-8 border-blue-500 text-slate-700 font-bold rounded-lg p-3 mb-4 leading-relaxed"></p>
+                <div id="learn-detail" class="text-center bg-white rounded-xl shadow-inner p-4 mb-4 min-h-[9rem] flex flex-col items-center justify-center">
+                    <p class="text-slate-400 font-bold">Toca un número para ver cómo se escribe</p>
+                </div>
+                <div id="learn-grid" class="grid grid-cols-5 sm:grid-cols-10 gap-2"></div>
+                <button id="back-from-learn-btn" class="w-full mt-6 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">
+                    Volver
+                </button>
+            </div>
+
+            <!-- 3. Elegir rango -->
+            <div id="range-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-lg mx-auto">
+                <h2 class="text-3xl font-black text-slate-700 mb-4 text-center">¿Qué números quieres practicar?</h2>
+                <div id="range-grid" class="grid grid-cols-2 gap-3"></div>
+                <button id="back-from-range-btn" class="w-full mt-4 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">
+                    Volver
+                </button>
+            </div>
+
+            <!-- 4. Nombre -->
+            <div id="name-modal" class="hidden bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl text-center max-w-lg mx-auto">
+                 <h2 class="text-3xl font-black text-slate-700 mb-4">¿Cómo te llamas?</h2>
+                 <input type="text" id="player-name-input" maxlength="16" placeholder="Tu nombre" class="w-full border-4 border-slate-300 rounded-lg p-3 text-center text-xl focus:outline-none focus:ring-4 focus:ring-blue-400 transition-all">
+                 <button id="start-game-btn" class="w-full mt-4 bg-lime-500 hover:bg-lime-600 text-white font-black py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-lime-700 btn-press-effect transition-all">
+                     ¡Empezar!
+                 </button>
+                 <button id="cancel-name-btn" class="w-full mt-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">
+                     Volver
+                 </button>
+            </div>
+
+            <!-- 5. Juego -->
+            <div id="game-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-lg mx-auto">
+                <div class="flex justify-between items-center mb-6 gap-2">
+                    <div id="player-info" class="text-lg font-bold text-blue-600 bg-white px-3 py-1 rounded-lg truncate"></div>
+                    <div id="score-display" class="text-lg font-black text-red-500 bg-white px-3 py-1 rounded-lg">0 pts</div>
+                    <div id="timer" class="text-3xl font-black text-slate-700 bg-white px-4 py-2 rounded-lg shadow-inner">00:00</div>
+                </div>
+
+                <div class="text-center">
+                    <div id="progress-bar" class="text-base text-slate-500 mb-2 font-bold"></div>
+                    <div id="problem" class="text-8xl md:text-9xl font-black text-slate-700 my-6"></div>
+
+                    <form id="answer-form">
+                        <input type="text" id="answer-input" lang="fr" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Écris le nombre…" class="w-full text-center text-3xl p-4 bg-transparent border-b-8 border-slate-300 focus:border-blue-400 focus:outline-none transition-colors duration-300">
+                        <button id="check-btn" type="submit" class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-black py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-blue-800 btn-press-effect transition-all">
+                            Comprobar
+                        </button>
+                    </form>
+
+                    <div id="feedback" class="hidden mt-6 rounded-xl p-4 font-bold text-lg"></div>
+                    <button id="next-btn" class="hidden w-full mt-4 bg-lime-500 hover:bg-lime-600 text-white font-black py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-lime-700 btn-press-effect transition-all">
+                        Siguiente →
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6. Resultados / Ranking -->
+            <div id="scores-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-lg mx-auto">
+                <h2 class="text-4xl text-center font-black mb-4 text-blue-700">Ranking</h2>
+                <p id="your-result" class="hidden text-center text-lg font-black text-blue-700 bg-blue-100 rounded-xl py-2 px-3 mb-4"></p>
+                <div id="mistakes-review" class="hidden mb-6"></div>
+                <div id="scores-range-tabs" class="flex flex-wrap gap-2 justify-center mb-4"></div>
+                <div id="high-scores-list" class="space-y-2"></div>
+                <button id="play-again-btn" class="w-full mt-8 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-red-700 btn-press-effect transition-all">
+                    Jugar de Nuevo
+                </button>
+                <button id="back-to-home-from-scores-btn" class="w-full mt-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">
+                    Volver al Inicio
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { formatTime, addScoreEntry } from "./js/math-game-logic.js";
+        import {
+            toFrench,
+            explain,
+            isCorrectAnswer,
+            pickNumbers,
+            scoreForAttempt,
+        } from "./js/french-numbers-logic.js";
+
+        // --- DATOS ---
+        const LEARN_TABS = [
+            {
+                label: '1–20', from: 1, to: 20,
+                rule: 'Del 1 al 16 hay que aprenderlos de memoria. Del 17 al 19 se suma: <b>dix + sept = dix-sept</b>. Y el 20 es <b>vingt</b>.',
+            },
+            {
+                label: '20–69', from: 20, to: 69,
+                rule: 'Decenas: <b>vingt</b> (20), <b>trente</b> (30), <b>quarante</b> (40), <b>cinquante</b> (50), <b>soixante</b> (60). Se escribe <b>decena-unidad</b> con guion: trente-deux. ¡Con el 1 se añade «et»!: <b>vingt-et-un</b>.',
+            },
+            {
+                label: '70–79', from: 70, to: 79,
+                rule: '¡En francés no hay palabra para el 70! Se dice <b>60 + 10</b>: <b>soixante-dix</b>. Luego sigue con 11, 12…: <b>soixante-et-onze</b> (71), soixante-douze (72)… hasta soixante-dix-neuf (79).',
+            },
+            {
+                label: '80–99', from: 80, to: 99,
+                rule: 'El 80 es <b>4 × 20</b>: <b>quatre-vingts</b> (con «s» solo en el 80). Después pierde la «s» y no lleva «et»: <b>quatre-vingt-un</b>. El 90 es 80 + 10: <b>quatre-vingt-dix</b>, quatre-vingt-onze…',
+            },
+            {
+                label: '100', from: 100, to: 100,
+                rule: '¡Fácil! El 100 es <b>cent</b>.',
+            },
+        ];
+
+        const RANGES = [
+            { id: '1-20', label: '1 – 20', from: 1, to: 20 },
+            { id: '1-69', label: '1 – 69', from: 1, to: 69 },
+            { id: '70-100', label: '70 – 100', from: 70, to: 100 },
+            { id: '1-100', label: '1 – 100', from: 1, to: 100 },
+        ];
+
+        const QUESTIONS_PER_GAME = 10;
+        const STORAGE_PREFIX = 'aiTeacherFrenchNumbers:';
+
+        // --- ELEMENTOS DEL DOM ---
+        const allScreens = {
+            home: document.getElementById('home-screen'),
+            learn: document.getElementById('learn-screen'),
+            range: document.getElementById('range-screen'),
+            name: document.getElementById('name-modal'),
+            game: document.getElementById('game-screen'),
+            scores: document.getElementById('scores-screen'),
+        };
+
+        const learnTabs = document.getElementById('learn-tabs');
+        const learnRule = document.getElementById('learn-rule');
+        const learnDetail = document.getElementById('learn-detail');
+        const learnGrid = document.getElementById('learn-grid');
+        const rangeGrid = document.getElementById('range-grid');
+        const playerNameInput = document.getElementById('player-name-input');
+        const playerInfo = document.getElementById('player-info');
+        const scoreDisplay = document.getElementById('score-display');
+        const timerEl = document.getElementById('timer');
+        const problemEl = document.getElementById('problem');
+        const answerInput = document.getElementById('answer-input');
+        const answerForm = document.getElementById('answer-form');
+        const checkBtn = document.getElementById('check-btn');
+        const feedbackEl = document.getElementById('feedback');
+        const nextBtn = document.getElementById('next-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const yourResultEl = document.getElementById('your-result');
+        const mistakesReview = document.getElementById('mistakes-review');
+        const scoresRangeTabs = document.getElementById('scores-range-tabs');
+        const highScoresList = document.getElementById('high-scores-list');
+
+        // --- ESTADO ---
+        let currentRange = RANGES[3];
+        let currentPlayer = '';
+        let currentNumbers = [];
+        let currentIndex = 0;
+        let currentAttempt = 1;
+        let currentScore = 0;
+        let mistakes = [];
+        let answerLocked = false;
+        let timerInterval;
+        let secondsElapsed = 0;
+        let audioStarted = false;
+
+        // --- SONIDOS (Tone.js) ---
+        const correctSound = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.5 } }).toDestination();
+        const wrongSound = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.005, decay: 0.2, sustain: 0, release: 0.2 } }).toDestination();
+
+        async function startAudioContext() {
+            if (!audioStarted) {
+                await Tone.start();
+                audioStarted = true;
+            }
+        }
+
+        // --- VOZ FRANCESA (speechSynthesis) ---
+        let frenchVoice = null;
+
+        function findFrenchVoice() {
+            if (!('speechSynthesis' in window)) return;
+            const voices = speechSynthesis.getVoices();
+            frenchVoice = voices.find(v => v.lang === 'fr-FR') || voices.find(v => v.lang.startsWith('fr')) || null;
+        }
+
+        function speak(text) {
+            if (!frenchVoice) return;
+            speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.voice = frenchVoice;
+            utterance.lang = frenchVoice.lang;
+            utterance.rate = 0.85;
+            speechSynthesis.speak(utterance);
+        }
+
+        if ('speechSynthesis' in window) {
+            findFrenchVoice();
+            speechSynthesis.addEventListener('voiceschanged', findFrenchVoice);
+        }
+
+        // --- NAVEGACIÓN ---
+        function showScreen(screenId) {
+            Object.values(allScreens).forEach(screen => screen.classList.add('hidden'));
+            allScreens[screenId].classList.remove('hidden');
+        }
+
+        function tabButtonClasses(active) {
+            const base = 'py-2 px-4 rounded-xl text-lg font-black shadow-md border-b-4 btn-press-effect transition-all';
+            return active
+                ? `${base} bg-blue-600 text-white border-blue-800`
+                : `${base} bg-white text-blue-600 border-slate-300`;
+        }
+
+        function escHtml(str) {
+            return String(str).replace(/[&<>"']/g, (c) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+            }[c]));
+        }
+
+        // --- APRENDER ---
+        function renderLearnTab(tabIndex) {
+            const tab = LEARN_TABS[tabIndex];
+            learnTabs.innerHTML = '';
+            LEARN_TABS.forEach((t, i) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = t.label;
+                btn.className = tabButtonClasses(i === tabIndex);
+                btn.addEventListener('click', () => renderLearnTab(i));
+                learnTabs.appendChild(btn);
+            });
+
+            learnRule.innerHTML = tab.rule;
+
+            learnGrid.innerHTML = '';
+            for (let n = tab.from; n <= tab.to; n++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = n;
+                btn.className = 'py-3 rounded-xl text-xl font-black bg-white text-slate-700 shadow-md border-b-4 border-slate-300 btn-press-effect transition-all hover:bg-blue-50';
+                btn.addEventListener('click', () => showLearnDetail(n, true));
+                learnGrid.appendChild(btn);
+            }
+
+            showLearnDetail(tab.from, false);
+        }
+
+        function showLearnDetail(n, speakNow) {
+            const word = toFrench(n);
+            const breakdown = explain(n);
+            learnDetail.innerHTML = `
+                <div class="text-5xl font-black text-red-500">${n}</div>
+                <div class="text-3xl md:text-4xl font-black text-blue-700 my-2 break-words">${word}</div>
+                ${breakdown ? `<div class="text-lg font-bold text-slate-500">${breakdown}</div>` : ''}
+                ${frenchVoice ? '<button type="button" id="speak-btn" class="mt-3 bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold py-2 px-4 rounded-xl btn-press-effect transition-all">🔊 Escuchar</button>' : ''}
+            `;
+            const speakBtn = document.getElementById('speak-btn');
+            if (speakBtn) speakBtn.addEventListener('click', () => speak(word));
+            if (speakNow) speak(word);
+        }
+
+        // --- ELEGIR RANGO ---
+        function renderRangePicker() {
+            rangeGrid.innerHTML = '';
+            RANGES.forEach(range => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = range.label;
+                btn.className = 'py-5 rounded-xl text-2xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md border-b-4 border-blue-800 btn-press-effect transition-all';
+                btn.addEventListener('click', () => {
+                    currentRange = range;
+                    showScreen('name');
+                    playerNameInput.focus();
+                });
+                rangeGrid.appendChild(btn);
+            });
+        }
+
+        // --- JUEGO ---
+        function startGame() {
+            const name = playerNameInput.value.trim();
+            if (!name) {
+                playerNameInput.classList.add('border-red-500', 'animate-shake');
+                setTimeout(() => playerNameInput.classList.remove('border-red-500', 'animate-shake'), 820);
+                return;
+            }
+            currentPlayer = name;
+            currentScore = 0;
+            mistakes = [];
+            currentNumbers = pickNumbers(currentRange.from, currentRange.to, QUESTIONS_PER_GAME);
+            currentIndex = 0;
+            updateScoreDisplay();
+            playerInfo.textContent = currentPlayer;
+            showScreen('game');
+            displayNextNumber();
+            startTimer();
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `${currentScore} pts`;
+        }
+
+        function displayNextNumber() {
+            currentAttempt = 1;
+            answerLocked = false;
+            problemEl.textContent = currentNumbers[currentIndex];
+            progressBar.textContent = `Número ${currentIndex + 1} de ${currentNumbers.length}`;
+            feedbackEl.classList.add('hidden');
+            nextBtn.classList.add('hidden');
+            answerForm.classList.remove('hidden');
+            answerInput.value = '';
+            answerInput.disabled = false;
+            checkBtn.disabled = false;
+            answerInput.focus();
+        }
+
+        function showFeedback(html, tone) {
+            const tones = {
+                ok: 'bg-lime-100 text-lime-800',
+                retry: 'bg-amber-100 text-amber-800',
+                wrong: 'bg-red-100 text-red-800',
+            };
+            feedbackEl.className = `mt-6 rounded-xl p-4 font-bold text-lg ${tones[tone]}`;
+            feedbackEl.innerHTML = html;
+        }
+
+        function checkAnswer(e) {
+            e.preventDefault();
+            if (answerLocked) return;
+            const typed = answerInput.value;
+            if (!typed.trim()) {
+                answerInput.classList.add('animate-shake');
+                setTimeout(() => answerInput.classList.remove('animate-shake'), 820);
+                return;
+            }
+
+            const n = currentNumbers[currentIndex];
+            const correct = isCorrectAnswer(typed, n);
+            currentScore += scoreForAttempt(currentAttempt, correct);
+            updateScoreDisplay();
+
+            if (correct) {
+                answerLocked = true;
+                correctSound.triggerAttackRelease("C5", "8n", Tone.now());
+                showFeedback(`✅ ¡Muy bien! <span class="text-blue-700">${toFrench(n)}</span>`, 'ok');
+                answerInput.disabled = true;
+                checkBtn.disabled = true;
+                setTimeout(goToNextNumber, 1000);
+                return;
+            }
+
+            wrongSound.triggerAttackRelease("A2", "8n", Tone.now());
+            if (currentAttempt === 1) {
+                currentAttempt = 2;
+                showFeedback('❌ No es correcto. ¡Inténtalo otra vez!', 'retry');
+                answerInput.classList.add('animate-shake', 'bg-red-100');
+                setTimeout(() => answerInput.classList.remove('animate-shake', 'bg-red-100'), 820);
+                answerInput.focus();
+                return;
+            }
+
+            answerLocked = true;
+            mistakes.push({ number: n, typed: typed.trim() });
+            showFeedback(`
+                <div>Has escrito: <span class="line-through">${escHtml(typed.trim())}</span></div>
+                <div class="mt-1">Se escribe: <span class="text-blue-700 text-2xl font-black">${toFrench(n)}</span></div>
+            `, 'wrong');
+            answerForm.classList.add('hidden');
+            nextBtn.classList.remove('hidden');
+            nextBtn.focus();
+        }
+
+        function goToNextNumber() {
+            currentIndex++;
+            if (currentIndex < currentNumbers.length) {
+                displayNextNumber();
+            } else {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            stopTimer();
+            answerInput.blur();
+            const entry = {
+                name: currentPlayer,
+                points: currentScore,
+                time: secondsElapsed,
+                date: new Date().toLocaleDateString('es-ES'),
+            };
+            const updated = addScoreEntry(loadScores(currentRange.id), entry);
+            saveScores(currentRange.id, updated);
+            renderResults(entry);
+            renderHighScores(currentRange.id, updated, entry);
+            showScreen('scores');
+        }
+
+        function startTimer() {
+            secondsElapsed = 0;
+            timerEl.textContent = '00:00';
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                timerEl.textContent = formatTime(secondsElapsed);
+            }, 1000);
+        }
+
+        function stopTimer() { clearInterval(timerInterval); }
+
+        // --- RESULTADOS Y RANKING (localStorage) ---
+        function loadScores(rangeId) {
+            try {
+                const raw = localStorage.getItem(STORAGE_PREFIX + rangeId);
+                return raw ? JSON.parse(raw) : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function saveScores(rangeId, scores) {
+            try {
+                localStorage.setItem(STORAGE_PREFIX + rangeId, JSON.stringify(scores));
+            } catch {
+                // localStorage no disponible (privado / cuota): el ranking no persiste esta vez
+            }
+        }
+
+        function renderResults(entry) {
+            if (!entry) {
+                yourResultEl.classList.add('hidden');
+                mistakesReview.classList.add('hidden');
+                return;
+            }
+            yourResultEl.classList.remove('hidden');
+            yourResultEl.textContent = `¡Has conseguido ${entry.points} de ${QUESTIONS_PER_GAME * 2} puntos en ${formatTime(entry.time)}!`;
+
+            mistakesReview.classList.remove('hidden');
+            if (mistakes.length === 0) {
+                mistakesReview.innerHTML = '<p class="text-center font-black text-lime-700 bg-lime-100 rounded-xl p-3">🎉 ¡Ningún fallo! Parfait !</p>';
+                return;
+            }
+            mistakesReview.innerHTML = `
+                <h3 class="font-black text-slate-700 text-xl mb-2">Repasa estos números:</h3>
+                <div class="space-y-2">
+                    ${mistakes.map(m => `
+                        <div class="bg-white/90 rounded-lg p-3 flex items-center gap-3">
+                            <span class="text-2xl font-black text-red-500 w-12 text-center">${m.number}</span>
+                            <div>
+                                <div class="text-blue-700 font-black text-lg">${toFrench(m.number)}</div>
+                                <div class="text-slate-400 text-sm line-through">${escHtml(m.typed)}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderHighScores(rangeId, scores, justPlayedEntry = null) {
+            scoresRangeTabs.innerHTML = '';
+            RANGES.forEach(range => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = range.label;
+                btn.className = tabButtonClasses(range.id === rangeId);
+                btn.addEventListener('click', () => {
+                    currentRange = range;
+                    renderHighScores(range.id, loadScores(range.id), justPlayedEntry);
+                });
+                scoresRangeTabs.appendChild(btn);
+            });
+
+            highScoresList.innerHTML = '';
+            if (scores.length === 0) {
+                highScoresList.innerHTML = '<p class="text-center text-slate-500 font-bold p-4">¡Aún no hay puntuaciones!</p>';
+                return;
+            }
+
+            const medals = ['🥇', '🥈', '🥉'];
+            scores.forEach((score, index) => {
+                const scoreEl = document.createElement('div');
+                const isNew = justPlayedEntry && score.name === justPlayedEntry.name
+                    && score.points === justPlayedEntry.points && score.time === justPlayedEntry.time
+                    && score.date === justPlayedEntry.date;
+                scoreEl.className = 'grid grid-cols-12 gap-2 items-center text-lg p-3 rounded-lg font-bold transition-all';
+                scoreEl.classList.add(isNew ? 'bg-yellow-200/90' : (index % 2 === 0 ? 'bg-white/90' : 'bg-slate-200/90'));
+                scoreEl.innerHTML = `
+                    <div class="col-span-2 text-center text-2xl">${medals[index] || (index + 1)}</div>
+                    <div class="col-span-4 text-slate-700 truncate">${escHtml(score.name)}</div>
+                    <div class="col-span-3 text-center text-blue-600">${score.points} pts</div>
+                    <div class="col-span-3 text-right text-slate-500 text-base">${formatTime(score.time)}</div>
+                `;
+                highScoresList.appendChild(scoreEl);
+            });
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('learn-btn').addEventListener('click', () => { renderLearnTab(0); showScreen('learn'); });
+        document.getElementById('back-from-learn-btn').addEventListener('click', () => { if (frenchVoice) speechSynthesis.cancel(); showScreen('home'); });
+        document.getElementById('practice-btn').addEventListener('click', () => { startAudioContext(); renderRangePicker(); showScreen('range'); });
+        document.getElementById('back-from-range-btn').addEventListener('click', () => showScreen('home'));
+        document.getElementById('cancel-name-btn').addEventListener('click', () => showScreen('range'));
+        document.getElementById('start-game-btn').addEventListener('click', startGame);
+        playerNameInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') startGame(); });
+        answerForm.addEventListener('submit', checkAnswer);
+        nextBtn.addEventListener('click', goToNextNumber);
+        document.getElementById('ranking-btn').addEventListener('click', () => {
+            renderResults(null);
+            renderHighScores(currentRange.id, loadScores(currentRange.id));
+            showScreen('scores');
+        });
+        document.getElementById('play-again-btn').addEventListener('click', () => { startAudioContext(); renderRangePicker(); showScreen('range'); });
+        document.getElementById('back-to-home-from-scores-btn').addEventListener('click', () => showScreen('home'));
+
+        // --- INICIALIZACIÓN ---
+        showScreen('home');
+    </script>
+</body>
+</html>

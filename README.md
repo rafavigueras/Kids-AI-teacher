@@ -29,6 +29,7 @@ Fichas de ejercicios con modo estudio y quiz. Funciona en iPad sin instalación.
 ├── exercise.html        ← modo Practicar (quiz)
 ├── leaderboard.html     ← top 10 por ficha
 ├── math-game.html       ← juego de Multiplicar y Sumar contrarreloj
+├── french-numbers.html  ← juego de los números en francés (1–100)
 ├── css/style.css        ← diseño unificado
 ├── js/
 │   ├── catalog.js       ← carga el catálogo
@@ -36,7 +37,8 @@ Fichas de ejercicios con modo estudio y quiz. Funciona en iPad sin instalación.
 │   ├── exercise.js      ← lógica del quiz
 │   ├── checker.js       ← corrector de respuestas
 │   ├── leaderboard.js   ← ranking en localStorage
-│   └── math-game-logic.js ← lógica del juego de mates (tests en .test.js)
+│   ├── math-game-logic.js ← lógica del juego de mates (tests en .test.js)
+│   └── french-numbers-logic.js ← números en francés, corrección y puntos (tests en .test.js)
 └── data/
     ├── catalog.json     ← índice de fichas disponibles
     └── english/
@@ -54,3 +56,9 @@ Fichas de ejercicios con modo estudio y quiz. Funciona en iPad sin instalación.
 - Se guarda localmente en cada dispositivo (localStorage)
 - Top 10 por ficha, ordenado por porcentaje de aciertos
 - El padre puede resetearlo desde la página de ranking
+
+## Tests
+
+```
+node --test js/*.test.js
+```
