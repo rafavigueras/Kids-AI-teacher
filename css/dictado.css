@@ -1,0 +1,194 @@
+/* Estilos del corrector de dictados (dictado.html).
+   Sin librerías externas: esta página guarda la clave de la API en localStorage y no
+   debe cargar scripts de terceros. Usa las variables de style.css. */
+
+body.dictado {
+  font-family: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #a1c4fd;
+  background: linear-gradient(to bottom, #c2e9fb, #a1c4fd);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #1e293b;
+}
+
+.dc-page { min-height: 80vh; padding: 1rem; display: flex; align-items: flex-start; justify-content: center; }
+.dc-wrap { width: 100%; max-width: 42rem; margin: 0 auto; }
+.dc-narrow { max-width: 32rem; margin: 0 auto; }
+
+.dc-panel {
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+@media (min-width: 768px) { .dc-panel { padding: 2rem; } }
+
+.dc-center { text-align: center; }
+.dc-title { font-size: 1.9rem; font-weight: 900; color: #334155; text-align: center; margin-bottom: 0.5rem; line-height: 1.2; }
+.dc-title-sm { font-size: 1.5rem; font-weight: 900; color: #334155; text-align: center; margin-bottom: 0.25rem; }
+.dc-hint { text-align: center; color: #64748b; font-weight: 800; margin-bottom: 1rem; }
+.dc-small { font-size: 0.85rem; color: #64748b; margin-top: 0.25rem; }
+.dc-big-icon { font-size: 4.5rem; margin-bottom: 1rem; line-height: 1.1; }
+.dc-label { display: block; font-weight: 800; color: #475569; }
+.dc-status { font-weight: 800; color: #475569; margin-bottom: 0.5rem; }
+
+.dc-mt-1 { margin-top: 0.25rem; }
+.dc-mt-2 { margin-top: 0.5rem; }
+.dc-mt-3 { margin-top: 0.75rem; }
+.dc-mt-4 { margin-top: 1rem; }
+.dc-mb-3 { margin-bottom: 0.75rem; }
+.dc-mb-4 { margin-bottom: 1rem; }
+.dc-gap > * + * { margin-top: 0.75rem; }
+
+.dc-grid { display: grid; gap: 0.75rem; }
+.dc-grid-2 { grid-template-columns: 1fr 1fr; }
+
+/* ── Botones ── */
+.dc-btn {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 4px solid transparent;
+  border-radius: 1rem;
+  padding: 0.9rem 1.25rem;
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.18);
+  transition: background 0.15s, transform 0.1s;
+}
+.dc-btn:active { transform: translateY(2px); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }
+.dc-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.dc-btn small { display: block; font-size: 1rem; font-weight: 800; opacity: 0.85; }
+.dc-btn-sm { padding: 0.55rem 1rem; font-size: 1.1rem; border-radius: 0.75rem; }
+.dc-btn-lg { padding: 1.2rem 1.5rem; font-size: 1.6rem; }
+
+.dc-blue { background: #2563eb; border-bottom-color: #1e40af; }
+.dc-blue:hover:not(:disabled) { background: #1d4ed8; }
+.dc-sky { background: #0ea5e9; border-bottom-color: #0369a1; }
+.dc-sky:hover:not(:disabled) { background: #0284c7; }
+.dc-red { background: #ef4444; border-bottom-color: #b91c1c; }
+.dc-red:hover:not(:disabled) { background: #dc2626; }
+.dc-lime { background: #84cc16; border-bottom-color: #4d7c0f; }
+.dc-lime:hover:not(:disabled) { background: #65a30d; }
+.dc-amber { background: #fbbf24; border-bottom-color: #b45309; }
+.dc-amber:hover:not(:disabled) { background: #f59e0b; }
+.dc-slate { background: #cbd5e1; color: #334155; box-shadow: none; }
+.dc-slate:hover:not(:disabled) { background: #94a3b8; }
+.dc-outline-red { background: #fff; color: #dc2626; border: 2px solid #ef4444; box-shadow: none; }
+.dc-outline-red:hover:not(:disabled) { background: #fef2f2; }
+
+/* ── Avisos ── */
+.dc-banner { border-left: 8px solid; border-radius: 0.5rem; padding: 0.75rem; font-weight: 800; }
+.dc-banner-amber { background: #fef3c7; border-color: #f59e0b; color: #78350f; }
+.dc-banner-yellow { background: #fffbeb; border-color: #fbbf24; color: #78350f; }
+.dc-banner-blue { background: #eff6ff; border-color: #3b82f6; color: #334155; }
+.dc-banner details { margin-top: 0.5rem; font-weight: 400; }
+.dc-banner summary { font-weight: 800; cursor: pointer; }
+.dc-error-text { color: #dc2626; font-weight: 800; }
+.dc-ok-text { color: #4d7c0f; font-weight: 800; }
+
+/* ── Campos ── */
+.dc-input {
+  display: block;
+  width: 100%;
+  border: 4px solid #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  font: inherit;
+  font-size: 1.1rem;
+  background: #fff;
+}
+.dc-input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.45); }
+.dc-input-pin { text-align: center; font-size: 1.9rem; letter-spacing: 0.4em; }
+.dc-check { display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #475569; font-weight: 800; margin: 0.25rem 0 1rem; }
+.dc-check input { width: 1.25rem; height: 1.25rem; }
+.dc-rule { border: 0; border-top: 1px solid #cbd5e1; margin: 1rem 0; }
+
+/* ── Cabecera ── */
+.dc-header-btn {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.3rem;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+/* ── Etiquetas de tipo de fallo ── */
+.dc-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-bottom: 0.75rem; }
+.dc-chip { display: inline-block; padding: 0.2rem 0.75rem; border-radius: 999px; font-weight: 800; font-size: 0.95rem; }
+.dc-chip + .dc-chip { margin-left: 0.35rem; }
+.dc-chips .dc-chip + .dc-chip { margin-left: 0; }
+.dc-chip-tilde { background: #f3e8ff; color: #6b21a8; }
+.dc-chip-mayuscula { background: #e0f2fe; color: #075985; }
+.dc-chip-letra { background: #ffe4e6; color: #9f1239; }
+.dc-chip-puntuacion { background: #d1fae5; color: #065f46; }
+.dc-chip-omitida { background: #fef3c7; color: #92400e; }
+.dc-chip-sobra { background: #e2e8f0; color: #334155; }
+.dc-chip-doubt { background: #ffedd5; color: #9a3412; }
+
+/* ── Resultado ── */
+#result-canvas, #preview-img { display: block; width: 100%; height: auto; border-radius: 0.75rem; background: #fff; }
+#preview-img { max-height: 60vh; object-fit: contain; }
+.dc-list { list-style: none; margin-top: 1rem; }
+.dc-list > li + li { margin-top: 0.75rem; }
+.dc-item { background: #fff; border-radius: 0.75rem; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); padding: 0.75rem; display: flex; gap: 0.75rem; cursor: pointer; }
+.dc-item-body { min-width: 0; }
+.dc-item-head { font-size: 1.15rem; color: #1e293b; }
+.dc-item-head strong { font-weight: 900; color: #4d7c0f; }
+.dc-item-head em { font-weight: 900; }
+.dc-item-text { color: #475569; margin-top: 0.25rem; }
+.dc-item-tags { margin-top: 0.5rem; }
+.dc-note { font-size: 0.85rem; color: #94a3b8; font-weight: 800; margin-left: 0.5rem; }
+.dc-badge {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dc-all-good { text-align: center; font-size: 1.15rem; font-weight: 800; color: #4d7c0f; }
+.dc-preview-q { text-align: center; font-size: 1.25rem; font-weight: 900; color: #334155; margin-top: 0.75rem; }
+.dc-excerpt { background: #fff; border-radius: 0.5rem; padding: 0.75rem; margin: 0.75rem 0; font-style: italic; color: #475569; }
+
+/* ── Pantalla "Claude está leyendo": un lápiz que escribe una línea ── */
+@keyframes pencil-write {
+  0%   { transform: translateX(-90px) rotate(-12deg); }
+  50%  { transform: translateX(90px) rotate(-4deg); }
+  100% { transform: translateX(-90px) rotate(-12deg); }
+}
+@keyframes line-grow {
+  0%   { width: 0; }
+  50%  { width: 180px; }
+  100% { width: 0; }
+}
+.pencil { display: inline-block; font-size: 3.5rem; animation: pencil-write 3s ease-in-out infinite; }
+.pencil-line { height: 6px; border-radius: 3px; background: #2563eb; margin: 0 auto 1.5rem; animation: line-grow 3s ease-in-out infinite; }
+.dc-pencil-row { height: 5rem; display: flex; align-items: center; justify-content: center; }
+.dc-loading-step { font-size: 1.1rem; font-weight: 800; color: #1d4ed8; margin-bottom: 0.25rem; }
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.animate-shake { animation: shake 0.82s cubic-bezier(.36, .07, .19, .97) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pencil, .pencil-line { animation: none; }
+  .pencil-line { width: 120px; }
+}

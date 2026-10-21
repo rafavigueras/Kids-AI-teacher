@@ -14,11 +14,12 @@ import {
   summarize,
   describeError,
   genericExplanation,
+  matchRatio,
   splitForDictation,
   spokenForm,
   addHistoryEntry,
 } from "./dictation-logic.js";
-import { MAX_IMAGE_EDGE, JPEG_QUALITY } from "./dictation-prompts.js";
+import { fitImageSize, JPEG_QUALITY } from "./dictation-prompts.js";
 import {
   transcribe,
   correctFree,
@@ -39,15 +40,10 @@ const SLOW_RATE = 0.55;
 const RED = "#dc2626";
 const ORANGE = "#f97316";
 
-const KIND_CHIP = {
-  tilde: "bg-purple-100 text-purple-800",
-  mayuscula: "bg-sky-100 text-sky-800",
-  letra: "bg-rose-100 text-rose-800",
-  puntuacion: "bg-emerald-100 text-emerald-800",
-  omitida: "bg-amber-100 text-amber-800",
-  sobra: "bg-slate-200 text-slate-700",
-};
-const DOUBT_CHIP = "bg-orange-100 text-orange-800";
+const DOUBT_CHIP = "dc-chip-doubt";
+
+// Por debajo de esta parte de palabras reconocidas se pregunta si la foto es del dictado.
+const MIN_MATCH = 0.5;
 
 const FREE_NOTICE =
   "En el dictado libre Claude no tiene el texto, así que algún fallo puede escaparse, sobre todo con palabras que suenan igual (echo y hecho, a ver y haber, valla y vaya). Si dudas, pregunta a papá.";
@@ -61,6 +57,7 @@ const screens = {
   listen: $("listen-screen"),
   photo: $("photo-screen"),
   loading: $("loading-screen"),
+  confirm: $("confirm-screen"),
   result: $("result-screen"),
   error: $("error-screen"),
   pin: $("pin-screen"),
@@ -161,14 +158,13 @@ async function loadDictations() {
   }
   list.innerHTML = "";
   if (state.dictations.length === 0) {
-    list.innerHTML = '<p class="text-center text-slate-500 font-bold">No hay dictados en la lista. Puedes hacer uno libre.</p>';
+    list.innerHTML = '<p class="dc-hint">No hay dictados en la lista. Puedes hacer uno libre.</p>';
     return;
   }
   for (const dictation of state.dictations) {
     const button = document.createElement("button");
-    button.className =
-      "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-2xl text-xl shadow-lg border-b-4 border-blue-800 btn-press-effect transition-all";
-    button.innerHTML = `✍️ ${esc(dictation.title)}<span class="block text-base font-bold text-blue-100">${esc(dictation.level)}</span>`;
+    button.className = "dc-btn dc-blue";
+    button.innerHTML = `✍️ ${esc(dictation.title)}<small>${esc(dictation.level)}</small>`;
     button.addEventListener("click", () => startDictation(dictation));
     list.appendChild(button);
   }
@@ -278,42 +274,36 @@ function showPhotoMessage(text) {
   el.classList.remove("hidden");
 }
 
-async function loadBitmap(file) {
-  if ("createImageBitmap" in window) {
-    try {
-      return await createImageBitmap(file, { imageOrientation: "from-image" });
-    } catch {
-      // navegador sin esa opción: se usa <img>, que ya respeta la orientación EXIF
-    }
-  }
+// Decodifica con <img>: es lo que mejor respeta la orientación EXIF (iOS desde 13.4 y los
+// navegadores actuales la aplican al dibujar). No se usa createImageBitmap, que en Safari
+// podía ignorar la opción de orientación sin avisar.
+async function loadImage(file) {
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();
     img.src = url;
     await img.decode();
     return img;
-  } finally {
+  } catch (error) {
     URL.revokeObjectURL(url);
+    throw error;
   }
 }
 
-// Foto -> canvas con el lado largo como mucho MAX_IMAGE_EDGE (así las cajas de Claude
-// caen 1:1 sobre este canvas) -> JPEG en base64. La imagen no se guarda en ningún sitio.
+// Foto -> canvas reducido a lo que Claude ve sin reescalar (lado largo y píxeles totales
+// acotados, ver fitImageSize: así sus cajas caen 1:1 sobre este canvas) -> JPEG en base64.
+// La imagen no se guarda en ningún sitio.
 async function prepareImage(file) {
-  const bitmap = await loadBitmap(file);
-  const srcWidth = bitmap.width ?? bitmap.naturalWidth;
-  const srcHeight = bitmap.height ?? bitmap.naturalHeight;
-  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(srcWidth, srcHeight));
-  const width = Math.round(srcWidth * scale);
-  const height = Math.round(srcHeight * scale);
+  const img = await loadImage(file);
+  const { width, height } = fitImageSize(img.naturalWidth, img.naturalHeight);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  if (typeof bitmap.close === "function") bitmap.close();
+  ctx.drawImage(img, 0, 0, width, height);
+  URL.revokeObjectURL(img.src);
   const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
   return { canvas, base64: dataUrl.split(",")[1], mediaType: "image/jpeg", width, height, dataUrl };
 }
@@ -360,8 +350,13 @@ function stopLoading() {
   clearInterval(loadingTimer);
 }
 
+let busy = false;
+
+// Una sola corrección a la vez: un segundo toque no debe lanzar (y cobrar) otra llamada.
 async function correct() {
-  if (!state.photo) return;
+  if (!state.photo || busy) return;
+  busy = true;
+  $("correct-btn").disabled = true;
   state.controller = new AbortController();
   const { signal } = state.controller;
   startLoading("Mirando la foto…");
@@ -375,13 +370,33 @@ async function correct() {
     stopLoading();
     if (error.code === "cancelado") {
       showScreen("photo");
-      return;
+    } else if (error instanceof WrongDictation) {
+      resetPhoto();
+      openPhotoScreen();
+    } else {
+      showError(error);
     }
-    showError(error);
+  } finally {
+    busy = false;
+    $("correct-btn").disabled = false;
   }
 }
 
 class NoTextError extends Error {}
+class WrongDictation extends Error {}
+
+// Pregunta si la foto es del dictado cuando casi nada coincide. Devuelve true si sigue adelante.
+function askIfSameDictation(ratio, written) {
+  const percent = Math.round(ratio * 100);
+  $("confirm-text").textContent = `Solo coincide un ${percent} % con «${state.dictation.title}». Esto es lo que ha leído Claude:`;
+  const excerpt = written.slice(0, 25).map((t) => t.text).join(" ");
+  $("confirm-excerpt").textContent = `«${excerpt}${written.length > 25 ? " …" : ""}»`;
+  showScreen("confirm");
+  return new Promise((resolve) => {
+    $("confirm-yes-btn").onclick = () => resolve(true);
+    $("confirm-no-btn").onclick = () => resolve(false);
+  });
+}
 
 // Con texto: Claude solo transcribe; el código compara; Claude explica lo ya detectado.
 async function correctWithText(signal) {
@@ -393,7 +408,15 @@ async function correctWithText(signal) {
     throw new NoTextError(transcription.imageProblem || "No he encontrado el dictado en la foto. Haz otra foto.");
   }
   setLoadingStep("Comparando con el dictado…");
-  const errors = findErrors(tokenize(state.dictation.text), written);
+  const refTokens = tokenize(state.dictation.text);
+  // Si casi nada coincide, probablemente es otro dictado: se pregunta antes de gastar más
+  const ratio = matchRatio(refTokens, written);
+  if (ratio < MIN_MATCH) {
+    stopLoading();
+    if (!(await askIfSameDictation(ratio, written))) throw new WrongDictation();
+    startLoading("Comparando con el dictado…");
+  }
+  const errors = findErrors(refTokens, written);
   const marks = errors.map((error, i) => ({ ...error, n: i + 1, marker: markerFor(error, written) }));
 
   const toExplain = marks.filter((m) => !m.doubtful);
@@ -403,7 +426,9 @@ async function correctWithText(signal) {
     try {
       const items = toExplain.map((m) => {
         const d = describeError(m);
-        return { n: m.n, kind: m.kind, written: d.written, correct: d.correct };
+        const detail =
+          m.join === "junto" ? "lo escribió todo junto y va separado" : m.join === "separado" ? "lo escribió separado y va todo junto" : undefined;
+        return { n: m.n, kind: m.kind, kinds: m.kinds, written: d.written, correct: d.correct, detail };
       });
       explanations = await explain(items, state.dictation.text, { signal });
     } catch (error) {
@@ -460,13 +485,13 @@ function renderResult({ marks, mode, imageProblem }) {
     if (summary.byKind[kind] === 0) continue;
     chips.insertAdjacentHTML(
       "beforeend",
-      `<span class="px-3 py-1 rounded-full font-bold ${KIND_CHIP[kind]}">${esc(KIND_LABELS[kind])}: ${summary.byKind[kind]}</span>`,
+      `<span class="dc-chip dc-chip-${kind}">${esc(KIND_LABELS[kind])}: ${summary.byKind[kind]}</span>`,
     );
   }
   if (summary.doubtful > 0) {
     chips.insertAdjacentHTML(
       "beforeend",
-      `<span class="px-3 py-1 rounded-full font-bold ${DOUBT_CHIP}">Para revisar con papá: ${summary.doubtful}</span>`,
+      `<span class="dc-chip ${DOUBT_CHIP}">Para revisar con papá: ${summary.doubtful}</span>`,
     );
   }
 
@@ -484,7 +509,7 @@ function renderResult({ marks, mode, imageProblem }) {
   list.innerHTML = "";
   for (const mark of marks) list.appendChild(errorItem(mark));
   if (marks.length === 0) {
-    list.innerHTML = '<li class="text-center text-lg font-bold text-lime-700">No he encontrado ningún fallo en tu dictado.</li>';
+    list.innerHTML = '<li class="dc-all-good">No he encontrado ningún fallo en tu dictado.</li>';
   }
   showScreen("result");
 }
@@ -492,17 +517,18 @@ function renderResult({ marks, mode, imageProblem }) {
 function errorItem(mark) {
   const color = mark.doubtful ? ORANGE : RED;
   const li = document.createElement("li");
-  li.className = "bg-white rounded-xl shadow p-3 flex gap-3";
+  li.className = "dc-item";
   li.dataset.n = mark.n;
-  const chipClass = mark.doubtful ? DOUBT_CHIP : KIND_CHIP[mark.kind];
-  const chipText = mark.doubtful ? "Revísalo con papá" : KIND_LABELS[mark.kind];
+  // Una palabra con varios fallos (letra y tilde) lleva una etiqueta por cada uno
+  const chips = mark.doubtful
+    ? `<span class="dc-chip ${DOUBT_CHIP}">Revísalo con papá</span>`
+    : (mark.kinds ?? [mark.kind]).map((kind) => `<span class="dc-chip dc-chip-${kind}">${esc(KIND_LABELS[kind])}</span>`).join("");
   li.innerHTML = `
-    <span class="flex-none w-8 h-8 rounded-full text-white font-black flex items-center justify-center" style="background:${color}">${mark.n}</span>
-    <div class="min-w-0">
-      <p class="text-lg text-slate-800">${headline(mark)}</p>
-      <p class="text-slate-600 mt-1">${esc(mark.doubtful ? doubtText(mark) : mark.explanation)}</p>
-      <span class="inline-block mt-2 px-3 py-0.5 rounded-full text-sm font-bold ${chipClass}">${esc(chipText)}</span>
-      ${mark.marker ? "" : '<span class="inline-block mt-2 ml-2 text-sm text-slate-400 font-bold">(no he podido marcarlo en la foto)</span>'}
+    <span class="dc-badge" style="background:${color}">${mark.n}</span>
+    <div class="dc-item-body">
+      <p class="dc-item-head">${headline(mark)}</p>
+      <p class="dc-item-text">${esc(mark.doubtful ? doubtText(mark) : mark.explanation)}</p>
+      <div class="dc-item-tags">${chips}${mark.marker ? "" : '<span class="dc-note">(no he podido marcarlo en la foto)</span>'}</div>
     </div>`;
   li.addEventListener("click", () => {
     drawResult(mark.n);
@@ -513,12 +539,12 @@ function errorItem(mark) {
 
 function headline(mark) {
   if (mark.doubtful) {
-    return mark.written ? `No se lee bien: <em class="font-black">${esc(mark.written.text)}</em>` : "No se lee bien esta parte";
+    return mark.written ? `No se lee bien: <em>${esc(mark.written.text)}</em>` : "No se lee bien esta parte";
   }
   const d = describeError(mark);
-  const written = d.written == null ? "" : ` <em class="font-black">${esc(d.written)}</em>`;
+  const written = d.written == null ? "" : ` <em>${esc(d.written)}</em>`;
   const arrow = d.written != null && d.correct != null ? " →" : "";
-  const correct = d.correct == null ? "" : ` <strong class="font-black text-lime-700">${esc(d.correct)}</strong>`;
+  const correct = d.correct == null ? "" : ` <strong>${esc(d.correct)}</strong>`;
   return `${esc(d.lead)}${written}${arrow}${correct}`;
 }
 
@@ -671,7 +697,7 @@ function renderSettingsStatus() {
 function keyMessage(text, ok) {
   const el = $("key-message");
   el.textContent = text;
-  el.className = `mt-3 font-bold ${ok ? "text-lime-700" : "text-red-600"}`;
+  el.className = `dc-mt-3 ${ok ? "dc-ok-text" : "dc-error-text"}`;
 }
 
 async function checkKey() {

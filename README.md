@@ -98,6 +98,12 @@ El SDK oficial (`@anthropic-ai/sdk`) se carga desde jsDelivr con la versión fij
 `js/claude-client.js`: si se actualiza, hay que probar antes. Se usa el modelo `claude-opus-5-5`. **Coste aproximado: 0,10–0,15 $ por dictado**, y entre 20 y
 60 segundos de espera (estimación; se confirma con la prueba de `tools/`).
 
+**Ojo con el origen compartido:** `localStorage` es común a todo lo que se publique bajo
+`rafavigueras.github.io` (mismo origen), no solo a este repositorio. Cualquier otra página
+publicada ahí podría leer la clave. Por eso el control real es el **límite de gasto mensual del
+workspace**, no el PIN ni el secreto de la clave. `dictado.html` no carga scripts de terceros
+(solo la hoja de estilo de la fuente y el SDK de Anthropic con versión fija).
+
 ### Privacidad
 
 - Las fotos **no se guardan en ningún sitio**: viajan solo a la API de Anthropic, que no entrena con

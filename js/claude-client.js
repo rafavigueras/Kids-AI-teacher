@@ -76,6 +76,15 @@ async function loadSdk() {
   return Anthropic;
 }
 
+// Mensajes de la API cuando se acaba el saldo o se llega al límite de gasto del workspace.
+const BILLING_RE = /credit balance|usage limits?|spend(ing)? limits?|billing|out of credits?|insufficient (funds|credits?)|workspace.*limit/i;
+
+// Tipo de error que viene dentro del cuerpo (también en los errores a mitad de streaming,
+// que llegan con HTTP 200 y sin status).
+function bodyErrorType(error) {
+  return error.error?.error?.type ?? error.error?.type ?? "";
+}
+
 function translateError(error) {
   if (error instanceof DictationError) return error;
   if (error instanceof ModelOutputError) {
@@ -98,6 +107,9 @@ function translateError(error) {
   if (error instanceof Anthropic.APIConnectionError) {
     return new DictationError("sin_conexion", "Sin conexión. Mira que el iPad tenga internet.", error);
   }
+  if (error instanceof Anthropic.APIError && (error.status === 402 || BILLING_RE.test(error.message ?? ""))) {
+    return new DictationError("saldo", "Se ha acabado el saldo de la clave, avisa a papá.", error);
+  }
   if (error instanceof Anthropic.AuthenticationError) {
     return new DictationError("clave", "La clave no vale, avisa a papá.", error);
   }
@@ -105,14 +117,13 @@ function translateError(error) {
     return new DictationError("permiso", "La clave no tiene permiso, avisa a papá.", error);
   }
   if (error instanceof Anthropic.RateLimitError) {
-    return new DictationError("saturado", "Hay demasiadas peticiones ahora mismo. Espera un minuto y vuelve a probar.", error);
-  }
-  if (error instanceof Anthropic.BadRequestError && /credit balance/i.test(error.message ?? "")) {
-    return new DictationError("saldo", "Se ha acabado el saldo de la clave, avisa a papá.", error);
+    return new DictationError("saturado", "Hay demasiadas peticiones ahora mismo. Prueba en un rato.", error);
   }
   if (error instanceof Anthropic.APIError) {
-    if (error.status === 529 || (error.status ?? 0) >= 500) {
-      return new DictationError("saturado", "Claude está saturado. Espera un minuto y vuelve a probar.", error);
+    // overloaded_error a mitad de la respuesta: HTTP 200 y luego un evento de error, sin status
+    const midStream = ["overloaded_error", "api_error", "rate_limit_error"].includes(bodyErrorType(error));
+    if (midStream || /overloaded/i.test(error.message ?? "") || error.status === 529 || (error.status ?? 0) >= 500) {
+      return new DictationError("saturado", "Claude está saturado ahora mismo. Prueba en un rato.", error);
     }
     return new DictationError("otro", `Algo ha fallado (${error.status ?? "error"}). Avisa a papá.`, error);
   }
