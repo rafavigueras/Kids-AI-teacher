@@ -3,8 +3,8 @@
 // NUNCA va en el código, se pega en Ajustes del corrector de dictados.
 //
 // SDK oficial por ESM desde jsDelivr, con la versión fijada para que una publicación
-// nueva no rompa la web sin avisar.
-import Anthropic from "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm";
+// nueva no rompa la web sin avisar. Se carga al primer uso (no al abrir la página),
+// así sin internet la página abre igual y se puede escuchar el dictado.
 import {
   MODEL,
   ModelOutputError,
@@ -15,6 +15,7 @@ import {
   readStructured,
 } from "./dictation-prompts.js";
 
+const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm";
 const KEY_STORAGE = "aiTeacherDictado:apiKey";
 
 // Reintentos de la API (429, 529 y 5xx los reintenta el SDK con espera creciente).
@@ -63,6 +64,18 @@ export class DictationError extends Error {
   }
 }
 
+let Anthropic = null;
+
+async function loadSdk() {
+  if (Anthropic) return Anthropic;
+  try {
+    Anthropic = (await import(SDK_URL)).default;
+  } catch (error) {
+    throw new DictationError("sin_conexion", "No se ha podido cargar Claude. Mira que el iPad tenga internet.", error);
+  }
+  return Anthropic;
+}
+
 function translateError(error) {
   if (error instanceof DictationError) return error;
   if (error instanceof ModelOutputError) {
@@ -75,6 +88,7 @@ function translateError(error) {
         return new DictationError("respuesta", "Claude ha contestado algo raro. Inténtalo otra vez.", error);
     }
   }
+  if (!Anthropic) return new DictationError("otro", "Algo ha fallado. Inténtalo otra vez.", error);
   if (error instanceof Anthropic.APIUserAbortError) {
     return new DictationError("cancelado", "Cancelado.", error);
   }
@@ -107,10 +121,11 @@ function translateError(error) {
 
 // ---------- Llamadas ----------
 
-function createClient() {
+async function createClient() {
   const apiKey = loadApiKey();
   if (!apiKey) throw new DictationError("clave", "Falta la clave de Claude: avisa a papá.");
-  return new Anthropic({
+  const Sdk = await loadSdk();
+  return new Sdk({
     apiKey,
     dangerouslyAllowBrowser: true, // la clave vive en el iPad de casa, ver README
     maxRetries: MAX_RETRIES,
@@ -122,7 +137,7 @@ function createClient() {
 // Se pasa por la API beta para pedir los fallbacks en servidor.
 async function run(params, signal) {
   try {
-    const client = createClient();
+    const client = await createClient();
     const stream = client.beta.messages.stream(withFallbacks(params), { signal });
     const message = await stream.finalMessage();
     if (message.usage) console.debug("[dictado] uso", message.usage, "modelo", message.model);
@@ -159,7 +174,7 @@ export async function explain(errors, refText, { signal } = {}) {
 // Devuelve true o lanza DictationError con el motivo.
 export async function testKey() {
   try {
-    const client = createClient();
+    const client = await createClient();
     await client.messages.create({
       model: MODEL,
       max_tokens: 256,

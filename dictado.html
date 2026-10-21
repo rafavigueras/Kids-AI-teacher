@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corrector de dictados – AI Teacher</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Nunito -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Estilos comunes del sitio (cabecera, navegación) -->
+    <link rel="stylesheet" href="css/style.css" />
+
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: #a1c4fd; /* Degradado azul suave */
+            background: linear-gradient(to bottom, #c2e9fb, #a1c4fd);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .btn-press-effect:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Pantalla "Claude está leyendo": un lápiz que escribe una línea */
+        @keyframes pencil-write {
+            0%   { transform: translateX(-90px) rotate(-12deg); }
+            50%  { transform: translateX(90px) rotate(-4deg); }
+            100% { transform: translateX(-90px) rotate(-12deg); }
+        }
+        @keyframes line-grow {
+            0%   { width: 0; }
+            50%  { width: 180px; }
+            100% { width: 0; }
+        }
+        .pencil { display: inline-block; font-size: 3.5rem; animation: pencil-write 3s ease-in-out infinite; }
+        .pencil-line { height: 6px; border-radius: 3px; background: #2563eb; margin: 0 auto; animation: line-grow 3s ease-in-out infinite; }
+
+        @keyframes shake {
+          10%, 90% { transform: translateX(-1px); }
+          20%, 80% { transform: translateX(2px); }
+          30%, 50%, 70% { transform: translateX(-4px); }
+          40%, 60% { transform: translateX(4px); }
+        }
+        .animate-shake { animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+
+        #result-canvas, #preview-img { width: 100%; height: auto; border-radius: 0.75rem; background: #fff; }
+        #preview-img { max-height: 60vh; object-fit: contain; }
+        #errors-list li { cursor: pointer; }
+        .header-settings {
+            margin-left: auto; background: rgba(255,255,255,0.18); color: #fff; border: none;
+            border-radius: 8px; font-size: 1.3rem; padding: 0.35rem 0.6rem; cursor: pointer; min-height: 44px;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+    <header class="page-header">
+      <a href="index.html" class="back-link" title="Volver al inicio">←</a>
+      <span class="logo">✍️</span>
+      <div>
+        <h1>Corrector de dictados</h1>
+        <p class="subtitle">Escribe, haz una foto y aprende de tus fallos</p>
+      </div>
+      <button id="settings-btn" class="header-settings" title="Ajustes (para papá)" aria-label="Ajustes">⚙️</button>
+    </header>
+
+    <div class="min-h-[80vh] w-full flex items-start justify-center p-4">
+        <div class="w-full max-w-2xl mx-auto">
+
+            <!-- 1. Elegir dictado -->
+            <div id="choose-screen" class="space-y-4">
+                <div id="no-key-banner" class="hidden bg-amber-100 border-l-8 border-amber-500 text-amber-900 font-bold rounded-lg p-3">
+                    🔑 Falta poner la clave de Claude. Avisa a papá: se hace en ⚙️ Ajustes.
+                </div>
+                <div class="bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl">
+                    <h2 class="text-3xl font-black text-slate-700 mb-2 text-center">¿Qué dictado quieres hacer?</h2>
+                    <p class="text-center text-slate-500 font-bold mb-4">1. Escucha · 2. Escribe en un folio · 3. Haz la foto</p>
+                    <div id="dictation-list" class="grid grid-cols-1 gap-3"></div>
+                    <button id="free-btn" class="w-full mt-3 bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-2xl text-xl shadow-lg border-b-4 border-red-700 btn-press-effect transition-all">
+                        📝 Dictado libre
+                        <span class="block text-base font-bold text-red-100">Ya tengo uno escrito: Claude lo corrige sin texto</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Escuchar -->
+            <div id="listen-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl text-center">
+                <h2 id="listen-title" class="text-2xl font-black text-slate-700 mb-1"></h2>
+                <p id="listen-progress" class="text-lg font-bold text-slate-500 mb-4"></p>
+                <div id="listen-icon" class="text-7xl mb-4">🎧</div>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <button id="repeat-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-2xl text-xl shadow-lg border-b-4 border-blue-800 btn-press-effect transition-all">🔊 Repetir</button>
+                    <button id="slow-btn" class="bg-sky-500 hover:bg-sky-600 text-white font-bold py-4 px-4 rounded-2xl text-xl shadow-lg border-b-4 border-sky-700 btn-press-effect transition-all">🐢 Más despacio</button>
+                    <button id="prev-btn" class="bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-3 px-4 rounded-2xl text-lg btn-press-effect transition-all">← Anterior</button>
+                    <button id="next-btn" class="bg-lime-500 hover:bg-lime-600 text-white font-black py-3 px-4 rounded-2xl text-lg shadow-lg border-b-4 border-lime-700 btn-press-effect transition-all">Siguiente →</button>
+                </div>
+                <label class="flex items-center justify-center gap-2 text-slate-600 font-bold mb-4">
+                    <input type="checkbox" id="spoken-signs" checked class="w-5 h-5">
+                    Dictar también los signos (coma, punto…)
+                </label>
+                <button id="listen-done-btn" class="w-full bg-red-500 hover:bg-red-600 text-white font-black py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-red-700 btn-press-effect transition-all">
+                    📷 Ya he terminado: hacer la foto
+                </button>
+                <button id="listen-back-btn" class="w-full mt-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">Volver</button>
+            </div>
+
+            <!-- 3. Foto -->
+            <div id="photo-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl">
+                <h2 id="photo-title" class="text-3xl font-black text-slate-700 mb-2 text-center">Haz la foto de tu dictado</h2>
+                <p class="text-center text-slate-500 font-bold mb-4">Foto recta, con buena luz y sin sombras. Que se vea todo el folio.</p>
+                <div id="no-voice-note" class="hidden bg-blue-50 border-l-8 border-blue-500 text-slate-700 font-bold rounded-lg p-3 mb-4">
+                    🎧 Este dispositivo no tiene voz en español: que alguien te dicte el texto.
+                    <details class="mt-2 font-normal">
+                        <summary class="font-bold cursor-pointer">Texto para quien dicta</summary>
+                        <p id="dictation-text-for-reader" class="mt-2"></p>
+                    </details>
+                </div>
+
+                <div id="photo-actions" class="grid grid-cols-1 gap-3">
+                    <button id="take-photo-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 px-6 rounded-2xl text-2xl shadow-lg border-b-4 border-blue-800 btn-press-effect transition-all">📷 Hacer la foto</button>
+                    <button id="pick-photo-btn" class="w-full bg-sky-400 hover:bg-sky-500 text-white font-bold py-3 px-4 rounded-xl text-lg shadow-md border-b-4 border-sky-600 btn-press-effect transition-all">🖼️ Elegir una foto que ya tengo</button>
+                </div>
+                <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
+                <input type="file" id="gallery-input" accept="image/*" class="hidden">
+                <p id="photo-message" class="hidden mt-3 text-center font-bold text-red-600"></p>
+
+                <div id="preview-box" class="hidden">
+                    <img id="preview-img" alt="Vista previa de tu dictado">
+                    <p class="text-center text-xl font-black text-slate-700 mt-3">¿Se lee bien?</p>
+                    <div class="grid grid-cols-2 gap-3 mt-2">
+                        <button id="retake-btn" class="bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-3 px-4 rounded-xl text-xl btn-press-effect transition-all">↩ Repetir</button>
+                        <button id="correct-btn" class="bg-lime-500 hover:bg-lime-600 text-white font-black py-3 px-4 rounded-xl text-xl shadow-lg border-b-4 border-lime-700 btn-press-effect transition-all">✅ Corregir</button>
+                    </div>
+                </div>
+
+                <button id="photo-back-btn" class="w-full mt-4 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">Volver</button>
+            </div>
+
+            <!-- 4. Corrigiendo -->
+            <div id="loading-screen" class="hidden bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl text-center">
+                <div class="h-20 flex items-center justify-center"><span class="pencil" aria-hidden="true">✏️</span></div>
+                <div class="pencil-line mb-6"></div>
+                <h2 class="text-3xl font-black text-slate-700 mb-2">Claude está leyendo tu dictado…</h2>
+                <p id="loading-step" class="text-lg font-bold text-blue-700 mb-1" aria-live="polite">Mirando la foto</p>
+                <p class="text-slate-500 font-bold">Puede tardar hasta un minuto. <span id="loading-elapsed">0 s</span></p>
+                <button id="cancel-btn" class="mt-6 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-6 rounded-xl text-lg btn-press-effect transition-all">Cancelar</button>
+            </div>
+
+            <!-- 5. Resultado -->
+            <div id="result-screen" class="hidden bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl shadow-2xl">
+                <h2 id="result-title" class="text-3xl font-black text-slate-700 text-center mb-2"></h2>
+                <div id="result-chips" class="flex flex-wrap gap-2 justify-center mb-3"></div>
+                <p id="result-notice" class="hidden bg-amber-50 border-l-8 border-amber-400 text-amber-900 font-bold rounded-lg p-3 mb-3"></p>
+                <canvas id="result-canvas"></canvas>
+                <p id="result-hint" class="hidden text-sm text-slate-500 font-bold text-center mt-1">Toca un fallo de la lista para verlo en la foto.</p>
+                <ol id="errors-list" class="space-y-3 mt-4"></ol>
+                <button id="another-btn" class="w-full mt-6 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-red-700 btn-press-effect transition-all">✍️ Otro dictado</button>
+                <button id="retry-photo-btn" class="w-full mt-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">📷 Repetir con otra foto</button>
+            </div>
+
+            <!-- 6. Error -->
+            <div id="error-screen" class="hidden bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl text-center">
+                <div class="text-6xl mb-3">😕</div>
+                <h2 id="error-message" class="text-2xl font-black text-slate-700 mb-6"></h2>
+                <button id="error-retry-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-blue-800 btn-press-effect transition-all">Intentarlo otra vez</button>
+                <button id="error-photo-btn" class="w-full mt-2 bg-sky-400 hover:bg-sky-500 text-white font-bold py-3 px-4 rounded-xl text-lg btn-press-effect transition-all">📷 Cambiar la foto</button>
+                <button id="error-settings-btn" class="hidden w-full mt-2 bg-amber-400 hover:bg-amber-500 text-white font-bold py-3 px-4 rounded-xl text-lg btn-press-effect transition-all">⚙️ Ajustes (papá)</button>
+                <button id="error-home-btn" class="w-full mt-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">Volver al inicio</button>
+            </div>
+
+            <!-- 7. PIN de papá -->
+            <div id="pin-screen" class="hidden bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl text-center max-w-lg mx-auto">
+                <h2 id="pin-title" class="text-3xl font-black text-slate-700 mb-2">PIN de papá</h2>
+                <p id="pin-help" class="text-slate-500 font-bold mb-4"></p>
+                <input type="password" id="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="····" class="w-full border-4 border-slate-300 rounded-lg p-3 text-center text-3xl tracking-widest focus:outline-none focus:ring-4 focus:ring-blue-400">
+                <input type="password" id="pin-confirm-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Otra vez" class="hidden w-full mt-3 border-4 border-slate-300 rounded-lg p-3 text-center text-3xl tracking-widest focus:outline-none focus:ring-4 focus:ring-blue-400">
+                <p id="pin-message" class="hidden mt-3 font-bold text-red-600"></p>
+                <button id="pin-ok-btn" class="w-full mt-4 bg-lime-500 hover:bg-lime-600 text-white font-black py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-lime-700 btn-press-effect transition-all">Entrar</button>
+                <button id="pin-cancel-btn" class="w-full mt-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">Volver</button>
+            </div>
+
+            <!-- 8. Ajustes -->
+            <div id="settings-screen" class="hidden bg-white/80 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-2xl">
+                <h2 class="text-3xl font-black text-slate-700 mb-4 text-center">Ajustes (papá)</h2>
+                <p id="key-status" class="font-bold text-slate-600 mb-2"></p>
+                <label for="key-input" class="block font-bold text-slate-600">Clave de la API de Anthropic</label>
+                <input type="password" id="key-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="sk-ant-…" class="w-full border-4 border-slate-300 rounded-lg p-3 text-lg focus:outline-none focus:ring-4 focus:ring-blue-400">
+                <p class="text-sm text-slate-500 mt-1">Se guarda solo en este dispositivo. Usa una clave de un workspace con límite de gasto mensual.</p>
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                    <button id="key-save-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl text-lg shadow-lg border-b-4 border-blue-800 btn-press-effect transition-all">Guardar y probar</button>
+                    <button id="key-test-btn" class="bg-sky-400 hover:bg-sky-500 text-white font-bold py-3 px-4 rounded-xl text-lg shadow-md border-b-4 border-sky-600 btn-press-effect transition-all">Probar la guardada</button>
+                </div>
+                <p id="key-message" class="hidden mt-3 font-bold"></p>
+                <button id="key-delete-btn" class="w-full mt-3 bg-white hover:bg-red-50 text-red-600 border-2 border-red-500 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">Borrar la clave</button>
+                <hr class="my-4 border-slate-300">
+                <p id="history-status" class="font-bold text-slate-600 mb-2"></p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="pin-change-btn" class="bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">Cambiar PIN</button>
+                    <button id="history-clear-btn" class="bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-2 px-4 rounded-xl text-lg btn-press-effect transition-all">Borrar historial</button>
+                </div>
+                <button id="settings-back-btn" class="w-full mt-4 bg-lime-500 hover:bg-lime-600 text-white font-black py-3 px-6 rounded-xl text-xl shadow-lg border-b-4 border-lime-700 btn-press-effect transition-all">Listo</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/dictation-ui.js"></script>
+</body>
+</html>
