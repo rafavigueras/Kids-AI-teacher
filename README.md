@@ -30,6 +30,7 @@ Fichas de ejercicios con modo estudio y quiz. Funciona en iPad sin instalación.
 ├── leaderboard.html     ← top 10 por ficha
 ├── math-game.html       ← juego de Multiplicar y Sumar contrarreloj
 ├── french-numbers.html  ← juego de los números en francés (1–100)
+├── dictado.html         ← corrector de dictados con foto (usa Claude)
 ├── css/style.css        ← diseño unificado
 ├── js/
 │   ├── catalog.js       ← carga el catálogo
@@ -38,12 +39,79 @@ Fichas de ejercicios con modo estudio y quiz. Funciona en iPad sin instalación.
 │   ├── checker.js       ← corrector de respuestas
 │   ├── leaderboard.js   ← ranking en localStorage
 │   ├── math-game-logic.js ← lógica del juego de mates (tests en .test.js)
-│   └── french-numbers-logic.js ← números en francés, corrección y puntos (tests en .test.js)
+│   ├── french-numbers-logic.js ← números en francés, corrección y puntos (tests en .test.js)
+│   ├── dictation-logic.js   ← comparar dictado y foto, clasificar fallos, marcadores (tests en .test.js)
+│   ├── dictation-prompts.js ← instrucciones y esquemas para Claude (los comparten la web y tools/)
+│   ├── claude-client.js     ← llamadas a la API de Anthropic desde el navegador
+│   └── dictation-ui.js      ← pantallas del corrector de dictados
+├── tools/               ← scripts de Node de apoyo (no son parte de la web)
+│   └── spike-dictado.mjs ← prueba de viabilidad con fotos reales (ver tools/README.md)
 └── data/
     ├── catalog.json     ← índice de fichas disponibles
-    └── english/
-        └── irregular-verbs-pp.json
+    ├── english/
+    │   └── irregular-verbs-pp.json
+    └── spanish/
+        └── dictados.json ← textos de los dictados
 ```
+
+## Corrector de dictados
+
+El niño escucha un dictado (o escribe uno libre), lo escribe en un folio, le hace una foto
+con el iPad y la web marca en rojo los fallos sobre la propia foto, con la explicación debajo.
+Las palabras que Claude no consigue leer salen en naranja: «revísalo con papá».
+
+Cómo funciona, para fiarse del resultado:
+
+- **Con texto:** Claude solo **transcribe** la foto, letra a letra y sin ver el texto original (así
+  no «arregla» las faltas al leer). El **código compara** esa transcripción con el original
+  (alineamiento palabra a palabra, en `js/dictation-logic.js`, con tests) y detecta los fallos:
+  tilde, mayúscula, letra, puntuación, palabra que falta o que sobra. Después Claude redacta las
+  explicaciones de los fallos ya detectados.
+- **Libre (sin texto):** Claude transcribe y señala los fallos en una sola llamada. La pantalla avisa
+  de que algún error puede escaparse (sobre todo palabras que suenan igual).
+- **Voz:** si el dispositivo tiene una voz en español, la web lee el dictado frase a frase (repetir,
+  más despacio, siguiente), diciendo los signos de puntuación. Si no hay voz, la opción no aparece.
+
+### Añadir un dictado
+
+1. Deja la foto o el texto del libro en `Assets/`.
+2. Dile a Claude Code: *«añade este dictado»*.
+3. Claude añadirá una entrada a `data/spanish/dictados.json` (`id`, `title`, `level`, `text`) y la
+   lista del corrector la mostrará sola. Haz `git push` y ya está.
+
+Usa textos propios o de dominio público. No copies textos de libros con derechos.
+
+### Configurar la clave (una vez por dispositivo)
+
+La web llama directamente a la API de Anthropic desde el navegador, con una clave guardada en el
+`localStorage` del propio iPad. **La clave nunca va en el repositorio (es público).** Para que
+el riesgo tenga techo:
+
+1. En la [Consola de Anthropic](https://console.anthropic.com) crea un **workspace propio**
+   («AI Teacher») y ponle un **límite de gasto mensual** (por ejemplo, 10 €).
+2. Crea una clave de API **solo para ese workspace**. Si se filtra, el daño tiene techo y se
+   revoca sin tocar nada más.
+3. En el iPad abre `dictado.html`, toca ⚙️, crea el PIN de 4 cifras (es solo para que los peques
+   no toquen los ajustes, no es seguridad real), pega la clave y pulsa **Guardar y probar**.
+
+El SDK oficial (`@anthropic-ai/sdk`) se carga desde jsDelivr con la versión fijada en
+`js/claude-client.js`: si se actualiza, hay que probar antes. Se usa el modelo `claude-opus-5-5`. **Coste aproximado: 0,10–0,15 $ por dictado**, y entre 20 y
+60 segundos de espera (estimación; se confirma con la prueba de `tools/`).
+
+### Privacidad
+
+- Las fotos **no se guardan en ningún sitio**: viajan solo a la API de Anthropic, que no entrena con
+  datos de la API por defecto. No hay servidor ni intermediario.
+- En el dispositivo solo se guarda en `localStorage`: la clave, el PIN y un historial con fecha,
+  dictado y número de fallos por categoría (nunca la imagen ni lo escrito).
+- Nunca subas fotos de los niños a este repositorio. La carpeta de pruebas `tools/spike-photos/`
+  está en `.gitignore`.
+
+### Prueba con fotos reales
+
+Antes de dar por bueno el corrector con cada tipo de letra o de foto, ejecuta
+`tools/spike-dictado.mjs` (ver `tools/README.md`): dibuja las cajas sobre la foto y mide
+el coste y el tiempo.
 
 ## Cómo funciona la corrección
 

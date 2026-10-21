@@ -36,7 +36,7 @@ function renderCards(sheets, container) {
       card.className = "card";
       const actions =
         sheet.type === "game"
-          ? `<a href="${sheet.url}" class="btn btn-primary" style="width:100%">🎮 Jugar</a>`
+          ? `<a href="${sheet.url}" class="btn btn-primary" style="width:100%">${sheet.actionLabel || "🎮 Jugar"}</a>`
           : `
           <a href="study.html?sheet=${encodeURIComponent(sheet.file)}&id=${sheet.id}" class="btn btn-secondary">📖 Estudiar</a>
           <a href="exercise.html?sheet=${encodeURIComponent(sheet.file)}&id=${sheet.id}" class="btn btn-primary">✏️ Practicar</a>

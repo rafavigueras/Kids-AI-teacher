@@ -27,5 +27,16 @@
     "level": "5º Primaria",
     "type": "game",
     "url": "french-numbers.html"
+  },
+  {
+    "id": "dictado",
+    "subject": "spanish",
+    "title": "Corrector de dictados",
+    "description": "Escribe un dictado en un folio, hazle una foto y Claude te marca los fallos con su explicación. Con texto del libro o libre.",
+    "icon": "✍️",
+    "level": "Primaria",
+    "type": "game",
+    "actionLabel": "✍️ Hacer un dictado",
+    "url": "dictado.html"
   }
 ]
