@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import {
-  MAX_IMAGE_EDGE,
+  fitImageSize,
   JPEG_QUALITY,
   estimateCost,
   transcribeRequest,
@@ -69,9 +69,8 @@ function fail(message) {
 
 async function prepareImage(photoPath) {
   const image = await loadImage(fs.readFileSync(photoPath)); // aplica la orientación EXIF
-  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.width, image.height));
-  const width = Math.round(image.width * scale);
-  const height = Math.round(image.height * scale);
+  // Lado largo y píxeles totales acotados (si no, la API reduce la foto y las cajas se desplazan)
+  const { width, height } = fitImageSize(image.width, image.height);
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#fff";
@@ -237,9 +236,10 @@ async function main() {
   const cost = calls.reduce((sum, [, call]) => sum + estimateCost(call.usage), 0);
   const latency = calls.reduce((sum, [, call]) => sum + (call.latencyMs ?? 0), 0);
   for (const [label, call] of calls) {
+    const attempts = call.usage.iterations?.length ?? 0;
     console.log(
       `\n${label}: ${call.usage.input_tokens} tokens de entrada, ${call.usage.output_tokens} de salida, ${(call.latencyMs / 1000).toFixed(1)} s` +
-        (call.servedByFallback ? " (respondió el modelo de reserva)" : ""),
+        (call.servedByFallback ? ` (respondió el modelo de reserva; coste sumando ${attempts} intentos)` : ""),
     );
   }
   if (calls.length > 0) console.log(`Total: ~${cost.toFixed(3)} $, ${(latency / 1000).toFixed(1)} s`);
