@@ -1,0 +1,10 @@
+{
+  "name": "ai-teacher-tools",
+  "private": true,
+  "description": "Scripts de apoyo (no forman parte de la web). Instalar con npm install dentro de tools/.",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.131.0",
+    "@napi-rs/canvas": "1.0.10"
+  }
+}
