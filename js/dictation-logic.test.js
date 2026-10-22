@@ -12,6 +12,21 @@ import {
   flattenTranscription,
   markerFor,
   freeErrorsToErrors,
+  freeTipsToTips,
+  analyze,
+  groupErrorsByWord,
+  underlineFor,
+  transcriptSegments,
+  rotateRect,
+  rotateRectTurns,
+  rotatedSize,
+  dragCropRect,
+  cropRegion,
+  levelGroup,
+  groupByLevel,
+  filterDictations,
+  pickRandom,
+  ruleStatus,
   describeError,
   genericExplanation,
   splitForDictation,
@@ -606,24 +621,55 @@ test("findErrors guarda kinds y kind, y summarize cuenta cada tipo", () => {
 
 // ---------- palabras juntas o separadas ----------
 
-test("'De repente' escrito 'Derepente' es UN fallo, no dos", () => {
-  const errors = errorsOf("Y de repente, llegó.", "Y derepente, llegó.");
-  assert.equal(errors.length, 1);
-  assert.equal(errors[0].kind, "letra");
-  assert.equal(errors[0].join, "junto");
-  assert.equal(errors[0].ref.text, "de repente");
-  assert.equal(errors[0].written.text, "derepente");
-  assert.deepEqual(describeError(errors[0]), { lead: "escribiste", written: "derepente", correct: "de repente" });
-  assert.match(genericExplanation(errors[0]), /separado/);
+const analyzeText = (ref, written) => analyze(tokenize(ref), tokenize(written));
+
+test("'De repente' escrito 'Derepente' es un consejo de letra, no una falta", () => {
+  const { errors, tips } = analyzeText("Y de repente, llegó.", "Y derepente, llegó.");
+  assert.equal(errors.length, 0);
+  assert.equal(tips.length, 1);
+  assert.equal(tips[0].written.text, "derepente");
+  assert.equal(tips[0].writtenIndex, 1);
+  assert.match(tips[0].text, /Separa más las palabras: aquí pone «derepente» y son «de repente»/);
+  assert.equal(summarize(errors).total, 0);
+  assert.equal(findErrors(tokenize("Y de repente, llegó."), tokenize("Y derepente, llegó.")).length, 0);
 });
 
-test("'a veces' como 'aveces' y 'se detuvo' como 'sedetuvo' son un solo fallo", () => {
-  const a = errorsOf("Pasa a veces.", "Pasa aveces.");
-  assert.equal(a.length, 1);
-  assert.equal(a[0].join, "junto");
-  const b = errorsOf("Cuando vio el árbol, se detuvo y miró.", "Cuando vio el árbol, sedetuvo y miró.");
-  assert.equal(b.length, 1);
-  assert.equal(b[0].ref.text, "se detuvo");
+test("'a veces' como 'aveces' y 'se detuvo' como 'sedetuvo' son consejos; 'ex plorador' pide ir junto", () => {
+  const a = analyzeText("Pasa a veces.", "Pasa aveces.");
+  assert.deepEqual([a.errors.length, a.tips.length], [0, 1]);
+  const b = analyzeText("Cuando vio el árbol, se detuvo y miró.", "Cuando vio el árbol, sedetuvo y miró.");
+  assert.deepEqual([b.errors.length, b.tips.length], [0, 1]);
+  assert.match(b.tips[0].text, /«se detuvo»/);
+  const c = analyzeText("El explorador salió.", "El ex plorador salió.");
+  assert.equal(c.errors.length, 0);
+  assert.match(c.tips[0].text, /Esto va junto: aquí pone «ex plorador» y es «explorador»/);
+});
+
+test("si unir o separar cambia la palabra sigue siendo falta de letra", () => {
+  const cases = [
+    ["Lo hice porque quise.", "Lo hice por que quise.", "separado"], // porque / por que
+    ["¿Por qué lloras?", "¿Porque lloras?", "junto"],
+    ["Yo lo vi tan bien como tú.", "Yo lo vi tanbien como tú.", "junto"],
+    ["Vengo a ver la casa.", "Vengo aver la casa.", "junto"],
+    ["Lo dejó aparte.", "Lo dejó a parte.", "separado"],
+    ["Lo hizo conque lo supiera.", "Lo hizo con que lo supiera.", "separado"],
+    ["No lo hago sino que me obligan.", "No lo hago si no que me obligan.", "separado"],
+    ["Me comió de más.", "Me comió demás.", "junto"],
+  ];
+  for (const [ref, written, join] of cases) {
+    const { errors, tips } = analyzeText(ref, written);
+    assert.equal(errors.length, 1, written);
+    assert.equal(errors[0].kind, "letra", written);
+    assert.equal(errors[0].join, join, written);
+    assert.equal(tips.length, 0, written);
+  }
+});
+
+test("unir palabras y además fallar tilde o mayúscula sigue siendo falta", () => {
+  const { errors, tips } = analyzeText("Y de repente, llegó.", "Y Derepente, llegó.");
+  assert.equal(tips.length, 0);
+  assert.equal(errors.length, 1);
+  assert.deepEqual(errors[0].kinds, ["letra", "mayuscula"]);
 });
 
 test("palabra junta con mayúscula o tilde de más suma esos tipos", () => {
@@ -632,7 +678,7 @@ test("palabra junta con mayúscula o tilde de más suma esos tipos", () => {
   assert.deepEqual(error.kinds, ["letra", "mayuscula"]);
 });
 
-test("una palabra partida en dos es UN fallo (separado) con la caja de las dos mitades", () => {
+test("una palabra partida en dos es un consejo (junto) y su marcador abarca las dos mitades", () => {
   const ref = tokenize("el explorador salió");
   const written = flattenTranscription({
     lines: [
@@ -647,12 +693,14 @@ test("una palabra partida en dos es UN fallo (separado) con la caja de las dos m
       },
     ],
   });
-  const errors = findErrors(ref, written);
-  assert.equal(errors.length, 1);
-  assert.equal(errors[0].join, "separado");
-  assert.equal(errors[0].ref.text, "explorador");
-  assert.match(genericExplanation(errors[0]), /junto/);
-  assert.deepEqual(markerFor(errors[0], written).box, [30, 0, 140, 32]);
+  const { errors, tips } = analyze(ref, written);
+  assert.equal(errors.length, 0);
+  assert.equal(tips.length, 1);
+  assert.match(tips[0].text, /es «explorador»/);
+  assert.equal(tips[0].written.text, "explo rador");
+  // el marcador de un tramo de varias palabras sigue rodeándolas todas
+  const op = { op: "substituted", writtenIndex: 1, writtenTokens: written.slice(1, 3) };
+  assert.deepEqual(markerFor(op, written).box, [30, 0, 140, 32]);
 });
 
 test("tres palabras seguidas distintas no se funden por casualidad", () => {
@@ -769,4 +817,245 @@ test("matchRatio mide qué parte de las palabras del original aparece", () => {
   assert.equal(matchRatio(ref, tokenize("hoy llueve en la ciudad")) < 0.5, true);
   assert.equal(matchRatio(ref, []), 0);
   assert.equal(matchRatio([], tokenize("hola")), 1);
+});
+
+// ---------- Un marcador por palabra, consejos de letra, subrayado y transcripción ----------
+
+const wordsLine = (...words) =>
+  flattenTranscription({
+    lines: [{ role: "dictado", words: words.map((text, i) => ({ text, box: [i * 100, 0, i * 100 + 80, 30], legible: true })) }],
+  });
+
+test("freeErrorsToErrors junta los fallos de una misma palabra en uno (letra y tilde)", () => {
+  const written = wordsLine("Yo", "abia", "ido");
+  const errors = freeErrorsToErrors(
+    [
+      { wordIndex: 1, written: "abia", correct: "había", kind: "tilde", explanation: "Lleva tilde." },
+      { wordIndex: 1, written: "abia", correct: "había", kind: "letra", explanation: "Lleva h." },
+    ],
+    written,
+  );
+  assert.equal(errors.length, 1);
+  assert.deepEqual(errors[0].kinds, ["letra", "tilde"]); // por importancia, no por orden de llegada
+  assert.equal(errors[0].kind, "letra");
+  assert.equal(errors[0].explanation, "Lleva tilde. Lleva h.");
+  assert.equal(errors[0].ref.text, "había");
+});
+
+test("groupErrorsByWord: tilde y mayúscula, explicaciones repetidas y fallos de otras palabras", () => {
+  const written = wordsLine("Pase", "bien");
+  const [pase, bien] = [0, 1].map((i) => ({ op: "substituted", ref: null, written: written[i], writtenIndex: i }));
+  const grouped = groupErrorsByWord([
+    { ...pase, ref: { text: "pasé", type: "word" }, kind: "mayuscula", kinds: ["mayuscula"], explanation: "Igual.", doubtful: false },
+    { ...pase, ref: { text: "pasé", type: "word" }, kind: "tilde", kinds: ["tilde"], explanation: "Igual.", doubtful: false },
+    { ...bien, ref: { text: "bien", type: "word" }, kind: "letra", kinds: ["letra"], explanation: "x", doubtful: false },
+  ]);
+  assert.equal(grouped.length, 2);
+  assert.deepEqual(grouped[0].kinds, ["tilde", "mayuscula"]);
+  assert.equal(grouped[0].explanation, "Igual.");
+  assert.deepEqual(grouped[1].kinds, ["letra"]);
+});
+
+test("groupErrorsByWord no junta una palabra que falta con la anterior y summarize cuenta cada tipo", () => {
+  const written = wordsLine("Yo", "abia");
+  const errors = freeErrorsToErrors(
+    [
+      { wordIndex: 1, written: "abia", correct: "había", kind: "letra", explanation: "a" },
+      { wordIndex: 1, written: "abia", correct: "había", kind: "tilde", explanation: "b" },
+      { wordIndex: 1, written: "abia", after: true, correct: ".", kind: "puntuacion", explanation: "c" },
+    ],
+    written,
+  );
+  assert.deepEqual(errors.map((e) => e.op), ["substituted", "missing"]);
+  const s = summarize(errors);
+  assert.equal(s.byKind.letra, 1);
+  assert.equal(s.byKind.tilde, 1);
+  assert.equal(s.total, 3);
+});
+
+test("freeTipsToTips resuelve el índice con el texto, descarta lo que no está y tolera su ausencia", () => {
+  const written = wordsLine("Hoy", "fuia", "la", "casa");
+  const tips = freeTipsToTips(
+    [
+      { wordIndex: 2, written: "fuia", text: 'Separa más las palabras: aquí pone "fuia" y son "fui a"' }, // desplazado 1
+      { wordIndex: 1, written: "fuia", text: "repetido" },
+      { wordIndex: 3, written: "nada", text: "no está" },
+      { wordIndex: 0, written: "Hoy", text: "   " },
+      { wordIndex: "1", written: "fuia", text: "índice raro" },
+    ],
+    written,
+  );
+  assert.equal(tips.length, 1);
+  assert.equal(tips[0].writtenIndex, 1);
+  assert.equal(tips[0].written.text, "fuia");
+  assert.match(tips[0].text, /Separa más/);
+  assert.deepEqual(freeTipsToTips(undefined, written), []); // JSON del esquema antiguo
+  assert.deepEqual(freeTipsToTips(null, written), []);
+});
+
+test("underlineFor: bajo la caja y del ancho de la caja; el trazo de lo que falta es corto y a trazos", () => {
+  const word = underlineFor({ box: [100, 40, 300, 80] }, 6);
+  assert.deepEqual(word, { x0: 100, x1: 300, y: 86, dashed: false });
+  const gap = underlineFor({ box: [100, 40, 124, 80] }, 6, { missing: true });
+  assert.equal(gap.dashed, true);
+  assert.ok(gap.x1 - gap.x0 <= 24 && gap.x1 - gap.x0 > 0);
+  assert.equal((gap.x0 + gap.x1) / 2, 112);
+  assert.equal(gap.y, 86);
+});
+
+test("transcriptSegments numera las palabras con fallo, los huecos y los saltos de línea", () => {
+  const written = flattenTranscription({
+    lines: [
+      { role: "dictado", words: [{ text: "Yo", box: [0, 0, 10, 10] }, { text: "abia", box: [20, 0, 40, 10] }, { text: ",", box: [41, 0, 43, 10] }] },
+      { role: "dictado", words: [{ text: "fui", box: [0, 20, 10, 30] }] },
+    ],
+  });
+  const marks = [
+    { op: "substituted", written: written[1], writtenIndex: 1, n: 1, doubtful: false },
+    { op: "missing", ref: { text: "que", type: "word" }, insertAt: 3, n: 2, doubtful: false },
+  ];
+  const segs = transcriptSegments(written, marks);
+  assert.deepEqual(segs.map((x) => [x.text, x.n]), [["Yo", null], ["abia", 1], [",", null], ["que", 2], ["fui", null]]);
+  assert.equal(segs[2].glued, true); // la coma pegada a la palabra
+  assert.equal(segs[3].missing, true);
+  // lo que falta justo antes de una palabra que abre línea va al principio de esa línea
+  assert.equal(segs[3].newLine, true);
+  assert.equal(segs[4].newLine, false);
+  assert.equal(segs[0].newLine, false);
+  assert.equal(transcriptSegments(written, [])[3].newLine, true);
+});
+
+test("transcriptSegments: una palabra omitida al principio no sale pegada a la siguiente", () => {
+  const written = wordsLine("Hoy", "llueve");
+  const segs = transcriptSegments(written, [{ op: "missing", ref: { text: "Mañana", type: "word" }, insertAt: 0, n: 1 }]);
+  assert.deepEqual(segs.map((x) => x.text), ["Mañana", "Hoy", "llueve"]);
+  assert.equal(segs[0].glued, false);
+  assert.equal(segs[1].glued, false); // lleva espacio detrás de «Mañana»
+  assert.equal(transcriptSegments(written, [])[0].glued, true); // sin omitida, la primera sigue pegada al borde
+  // un hueco en mitad de la línea no cambia sus saltos
+  const mid = transcriptSegments(written, [{ op: "missing", ref: null, insertAt: 1, n: 1 }]);
+  assert.deepEqual(mid.map((x) => [x.text, x.newLine]), [["Hoy", false], ["▲", false], ["llueve", false]]);
+});
+
+test("transcriptSegments marca todas las palabras de un tramo con el mismo número", () => {
+  const written = wordsLine("a", "b", "c");
+  const marks = [{ op: "extra", written: written[1], writtenTokens: [written[1], written[2]], writtenIndex: 1, n: 1 }];
+  assert.deepEqual(transcriptSegments(written, marks).map((x) => x.n), [null, 1, 1]);
+});
+
+test("rotateRect gira el recuadro 90° en el sentido del reloj", () => {
+  // en una imagen de 100 x 50 el recuadro arriba a la izquierda pasa a arriba a la derecha
+  assert.deepEqual(rotateRect({ x: 0, y: 0, w: 20, h: 10 }, 100, 50), { x: 40, y: 0, w: 10, h: 20 });
+  // en fracciones (W = H = 1) también
+  assert.deepEqual(rotateRect({ x: 0.1, y: 0.2, w: 0.3, h: 0.4 }, 1, 1), { x: 1 - 0.2 - 0.4, y: 0.1, w: 0.4, h: 0.3 });
+});
+
+test("rotateRectTurns: cuatro vueltas dejan el recuadro como estaba; dos lo reflejan", () => {
+  const rect = { x: 10, y: 5, w: 30, h: 20 };
+  const four = rotateRectTurns(rect, 100, 50, 4);
+  assert.deepEqual(four.rect, rect);
+  assert.deepEqual([four.width, four.height], [100, 50]);
+  const two = rotateRectTurns(rect, 100, 50, 2);
+  assert.deepEqual(two.rect, { x: 60, y: 25, w: 30, h: 20 });
+  const one = rotateRectTurns(rect, 100, 50, 1);
+  assert.deepEqual([one.width, one.height], [50, 100]);
+  assert.deepEqual(rotatedSize(100, 50, 1), { width: 50, height: 100 });
+  assert.deepEqual(rotatedSize(100, 50, 2), { width: 100, height: 50 });
+  assert.deepEqual(rotatedSize(100, 50, 3), { width: 50, height: 100 });
+});
+
+test("dragCropRect: mover y redimensionar sin salir de la imagen ni bajar del mínimo", () => {
+  const rect = { x: 0.2, y: 0.2, w: 0.5, h: 0.5 };
+  assert.deepEqual(dragCropRect(rect, "move", 0.1, -0.1), { x: 0.30000000000000004, y: 0.1, w: 0.5, h: 0.5 });
+  assert.deepEqual(dragCropRect(rect, "move", 5, 5), { x: 0.5, y: 0.5, w: 0.5, h: 0.5 }); // tope: pegado al borde
+  const se = dragCropRect(rect, "se", 0.1, 0.05);
+  assert.ok(Math.abs(se.w - 0.6) < 1e-9 && Math.abs(se.h - 0.55) < 1e-9 && se.x === 0.2 && se.y === 0.2);
+  const nw = dragCropRect(rect, "nw", -1, -1); // no pasa del borde de la imagen
+  assert.deepEqual([nw.x, nw.y], [0, 0]);
+  assert.ok(Math.abs(nw.x + nw.w - 0.7) < 1e-9);
+  const tiny = dragCropRect(rect, "e", -5, 0); // no baja del mínimo
+  assert.ok(Math.abs(tiny.w - 0.1) < 1e-9);
+  const edge = dragCropRect(rect, "s", 5, 5);
+  assert.equal(edge.y + edge.h, 1);
+});
+
+test("cropRegion pasa fracciones a píxeles dentro de la imagen; sin recorte es la imagen entera", () => {
+  assert.deepEqual(cropRegion(null, 800, 600), { x: 0, y: 0, w: 800, h: 600 });
+  assert.deepEqual(cropRegion({ x: 0.25, y: 0.5, w: 0.5, h: 0.25 }, 800, 600), { x: 200, y: 300, w: 400, h: 150 });
+  const edge = cropRegion({ x: 0.9, y: 0.9, w: 0.5, h: 0.5 }, 100, 100);
+  assert.ok(edge.x + edge.w <= 100 && edge.y + edge.h <= 100 && edge.w >= 1);
+});
+
+// ---------- Elegir dictado y reglas ----------
+
+test("levelGroup agrupa por dificultad (también los niveles antiguos) y nunca dice «ciclo»", () => {
+  assert.equal(levelGroup("3º y 4º de Primaria").key, "3-4");
+  assert.equal(levelGroup("5º y 6º de Primaria").key, "5-6");
+  assert.equal(levelGroup("5º Primaria").label, "5º y 6º de Primaria");
+  assert.equal(levelGroup("4º Primaria").label, "3º y 4º de Primaria");
+  assert.equal(levelGroup("Infantil").label, "Infantil");
+  assert.equal(levelGroup(undefined).label, "Otros");
+  for (const level of ["3º y 4º de Primaria", "5º Primaria", "x"]) assert.ok(!/ciclo/i.test(levelGroup(level).label));
+});
+
+test("groupByLevel ordena 3º-4º, 5º-6º y el resto, y reparte los dictados", () => {
+  const list = [
+    { id: "a", level: "5º Primaria" },
+    { id: "b", level: "3º y 4º de Primaria" },
+    { id: "c", level: "5º y 6º de Primaria" },
+    { id: "d", level: "Otro" },
+  ];
+  const groups = groupByLevel(list);
+  assert.deepEqual(groups.map((g) => g.label), ["3º y 4º de Primaria", "5º y 6º de Primaria", "Otro"]);
+  assert.deepEqual(groups[1].items.map((i) => i.id), ["a", "c"]);
+  assert.deepEqual(groupByLevel(null), []);
+});
+
+test("filterDictations busca sin tildes ni mayúsculas en título, número y texto", () => {
+  const items = [
+    { id: "1", title: "El explorador en la selva", number: 12, text: "Un jaguar cruzó el camino." },
+    { id: "2", title: "Una tarde en el pueblo", number: 213, text: "Mi abuela vive allí." },
+  ];
+  assert.deepEqual(filterDictations(items, "SELVA").map((i) => i.id), ["1"]);
+  assert.deepEqual(filterDictations(items, "pueblo tarde").map((i) => i.id), ["2"]);
+  assert.deepEqual(filterDictations(items, "jaguár").map((i) => i.id), ["1"]); // tilde de más
+  assert.deepEqual(filterDictations(items, "213").map((i) => i.id), ["2"]);
+  assert.equal(filterDictations(items, "  ").length, 2);
+  assert.deepEqual(filterDictations(items, "zzz"), []);
+});
+
+test("pickRandom elige uno, evita repetir el último y tolera la lista vacía", () => {
+  const items = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  assert.equal(pickRandom(items, () => 0).id, "a");
+  assert.equal(pickRandom(items, () => 0.999).id, "c");
+  assert.equal(pickRandom(items, () => 0, "a").id, "b"); // salta el último
+  assert.equal(pickRandom([{ id: "solo" }], () => 0, "solo").id, "solo");
+  assert.equal(pickRandom([], () => 0), null);
+});
+
+test("ruleStatus dice qué reglas del dictado se han fallado según las explicaciones", () => {
+  const rules = ["Se escribe una sola r cuando el sonido es suave.", "Se escribe rr entre vocales."];
+  const marks = [{ n: 1 }, { n: 2 }, { n: 3, doubtful: true }];
+  const status = ruleStatus(rules, marks, { 1: 2, 2: 0, 3: 1 });
+  assert.deepEqual(status.map((r) => r.failedBy), [[], [1]]); // el dudoso no cuenta, 0 = ninguna regla
+  assert.equal(status[1].rule, rules[1]);
+  assert.equal(status[0].number, 1);
+  assert.equal(ruleStatus(rules, marks, null), null); // no hubo explicaciones: no se puede deducir
+  assert.equal(ruleStatus([], marks, { 1: 1 }), null);
+  assert.equal(ruleStatus(undefined, marks, {}), null);
+});
+
+test("groupErrorsByWord: el 'correcto' es el de la entrada del tipo principal, no el de la primera", () => {
+  const written = wordsLine("Yo", "abia");
+  const errors = freeErrorsToErrors(
+    [
+      { wordIndex: 1, written: "abia", correct: "Había", kind: "mayuscula", explanation: "a" },
+      { wordIndex: 1, written: "abia", correct: "había", kind: "letra", explanation: "b" },
+    ],
+    written,
+  );
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].kind, "letra");
+  assert.equal(errors[0].ref.text, "había"); // el de «letra», que llegó segundo
+  assert.ok(!("refs" in errors[0]));
 });

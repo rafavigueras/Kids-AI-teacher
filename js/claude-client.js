@@ -172,13 +172,20 @@ export function correctFree(imageB64, mediaType, { size, signal } = {}) {
 }
 
 // Explicaciones para niños de fallos ya detectados por el código.
-// errors: [{ n, kind, written, correct }]. Devuelve { n: texto }.
-export async function explain(errors, refText, { signal } = {}) {
-  if (errors.length === 0) return {};
-  const result = await run(explainRequest(errors, refText), signal);
-  const byNumber = {};
-  for (const item of result.explanations ?? []) byNumber[item.n] = item.text;
-  return byNumber;
+// errors: [{ n, kind, written, correct }].
+// Devuelve { texts: {n: explicación}, rules: {n: número de la regla del dictado (0 = ninguna)} }.
+// `rules` son las reglas del dictado (si las tiene): las explicaciones las citan.
+export async function explain(errors, refText, { rules = [], signal } = {}) {
+  if (errors.length === 0) return { texts: {}, rules: {} };
+  const result = await run(explainRequest(errors, refText, rules), signal);
+  const texts = {};
+  const ruleOf = {};
+  for (const item of result.explanations ?? []) {
+    texts[item.n] = item.text;
+    const rule = Number.isInteger(item.rule) ? item.rule : 0;
+    ruleOf[item.n] = rule >= 1 && rule <= rules.length ? rule : 0;
+  }
+  return { texts, rules: ruleOf };
 }
 
 // Para el panel de Ajustes: una llamada mínima con la clave guardada.

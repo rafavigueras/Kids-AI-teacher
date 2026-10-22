@@ -10,7 +10,12 @@ import {
   FREE_SCHEMA,
   TRANSCRIBE_SYSTEM,
   FREE_SYSTEM,
+  RULES_CATALOG,
+  EXPLAIN_SYSTEM,
+  EXPLAIN_SCHEMA,
   explainRequest,
+  freeRequest,
+  transcribeRequest,
   withFallbacks,
 } from "./dictation-prompts.js";
 
@@ -101,4 +106,79 @@ test("withFallbacks añade la beta y fallbacks default sin tocar el original", (
   assert.equal(out.fallbacks, "default");
   assert.deepEqual(out.betas, ["server-side-fallback-2026-07-01"]);
   assert.equal(params.fallbacks, undefined);
+});
+
+test("el modo libre usa effort medium y los demás siguen con el suyo", () => {
+  assert.equal(freeRequest("x", "image/jpeg").output_config.effort, "medium");
+  assert.equal(transcribeRequest("x", "image/jpeg").output_config.effort, "high");
+  assert.equal(explainRequest([], "t").output_config.effort, "medium");
+});
+
+test("el esquema del modo libre tiene tips (wordIndex, written, text) y solo palabras clave soportadas", () => {
+  const item = FREE_SCHEMA.properties.tips.items;
+  for (const field of ["wordIndex", "written", "text"]) {
+    assert.ok(item.required.includes(field), field);
+    assert.ok(item.properties[field], field);
+  }
+  assert.equal(item.additionalProperties, false);
+  assert.ok(FREE_SCHEMA.required.includes("tips"));
+  const allowed = new Set(["type", "description", "items", "properties", "required", "additionalProperties", "enum"]);
+  const walk = (node) => {
+    if (!node || typeof node !== "object") return;
+    for (const [key, value] of Object.entries(node)) {
+      if (["properties"].includes(key)) Object.values(value).forEach(walk);
+      else {
+        assert.ok(allowed.has(key), `palabra clave no soportada: ${key}`);
+        if (key === "items") walk(value);
+      }
+    }
+  };
+  walk(FREE_SCHEMA);
+});
+
+test("las instrucciones piden literalidad con palabras pegadas y mandan las uniones a tips", () => {
+  assert.match(TRANSCRIBE_SYSTEM, /un solo elemento/);
+  assert.match(TRANSCRIBE_SYSTEM, /no inventes tildes/);
+  assert.match(FREE_SYSTEM, /NO son faltas de ortografía/);
+  assert.match(FREE_SYSTEM, /tips/);
+});
+
+test("explainRequest pasa las reglas del dictado numeradas y pide citarlas con su redacción", () => {
+  const rules = ["Se escribe una sola r cuando el sonido es suave.", "Se escriben con b:\n- las palabras que empiezan por bu-."];
+  const request = explainRequest([{ n: 1, kind: "letra", written: "caro", correct: "carro" }], "texto", rules);
+  const text = request.messages[0].content;
+  assert.match(text, /Reglas que trabaja este dictado:\n1\. Se escribe una sola r cuando el sonido es suave\.\n2\. Se escriben con b:/);
+  assert.ok(text.indexOf("Reglas que trabaja") < text.indexOf("Fallos del niño"));
+  assert.match(EXPLAIN_SYSTEM, /con la misma redacción/);
+  assert.match(EXPLAIN_SYSTEM, /Sin alargar/);
+  // sin reglas el mensaje queda como antes
+  assert.doesNotMatch(explainRequest([{ n: 1, kind: "letra", written: "a", correct: "b" }], "t").messages[0].content, /Reglas que trabaja/);
+  assert.doesNotMatch(explainRequest([], "t", []).messages[0].content, /Reglas que trabaja/);
+});
+
+test("el esquema de explicaciones devuelve el número de regla (0 = ninguna)", () => {
+  const item = EXPLAIN_SCHEMA.properties.explanations.items;
+  assert.ok(item.required.includes("rule"));
+  assert.equal(item.properties.rule.type, "integer");
+  assert.equal(item.additionalProperties, false);
+});
+
+test("el modo libre empieza por el catálogo de reglas (prefijo fijo) y pide regla primero y caso después", () => {
+  assert.ok(FREE_SYSTEM.startsWith(RULES_CATALOG));
+  assert.match(RULES_CATALOG, /Se escribe una sola r cuando el sonido es suave\./);
+  assert.match(RULES_CATALOG, /Se escribe rr cuando va entre vocales y el sonido es fuerte\./);
+  assert.ok(RULES_CATALOG.split("\n").length >= 25);
+  assert.match(FREE_SYSTEM, /primero la regla en una frase corta/);
+  assert.match(FREE_SYSTEM, /sin alargar/);
+  assert.doesNotMatch(TRANSCRIBE_SYSTEM, /Catálogo de reglas/); // la transcripción sola no lo necesita
+  assert.equal(freeRequest("x", "image/jpeg").system, FREE_SYSTEM);
+});
+
+test("tips es solo para espacios mal puestos entre palabras correctas; si cambia la palabra es falta", () => {
+  assert.match(FREE_SYSTEM, /tips es SOLO para eso/);
+  assert.match(FREE_SYSTEM, /por qué \/ por que/);
+  assert.match(FREE_SYSTEM, /nunca en tips/);
+  assert.doesNotMatch(FREE_SYSTEM, /o separadas de más NO son faltas/);
+  assert.match(FREE_SCHEMA.properties.tips.description, /cambia la palabra o su significado/);
+  assert.match(RULES_CATALOG, /Uso de sino\/si no, tampoco\/tan poco/); // coherente con el catálogo
 });

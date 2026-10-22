@@ -5,6 +5,7 @@
 // de la respuesta y el coste. Uso y qué mirar: tools/README.md.
 //
 //   ANTHROPIC_API_KEY=... node tools/spike-dictado.mjs foto.jpg [--ref texto.txt] [--free]
+//                           [--rotate 90|180|270] [--crop x,y,w,h]
 //
 // La clave se lee del entorno; nunca se escribe en ningún fichero.
 
@@ -26,13 +27,18 @@ import {
 import {
   tokenize,
   flattenTranscription,
-  findErrors,
+  analyze,
   freeErrorsToErrors,
+  freeTipsToTips,
   markerFor,
   summarize,
   describeError,
+  rotateRectTurns,
+  rotatedSize,
+  cropRegion,
   KIND_LABELS,
 } from "../js/dictation-logic.js";
+import { drawPhotoRegion, drawMarks } from "../js/dictation-draw.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(here, "spike-photos", "out");
@@ -40,7 +46,7 @@ const OUT_DIR = path.join(here, "spike-photos", "out");
 // ---------- Argumentos ----------
 
 function parseArgs(argv) {
-  const args = { photo: null, ref: null, free: false, fromJson: null, explain: true, out: OUT_DIR };
+  const args = { photo: null, ref: null, free: false, fromJson: null, explain: true, out: OUT_DIR, turns: 0, crop: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--ref") args.ref = argv[++i];
@@ -48,16 +54,35 @@ function parseArgs(argv) {
     else if (arg === "--from-json") args.fromJson = argv[++i];
     else if (arg === "--no-explain") args.explain = false;
     else if (arg === "--out") args.out = argv[++i];
+    else if (arg === "--rotate") args.turns = parseRotate(argv[++i]);
+    else if (arg === "--crop") args.crop = parseCrop(argv[++i]);
     else if (arg.startsWith("--")) fail(`Opción desconocida: ${arg}`);
     else args.photo = arg;
   }
   if (!args.photo) {
     fail(
-      "Uso: node tools/spike-dictado.mjs <foto> [--ref texto.txt] [--free] [--no-explain] [--from-json resultado.json] [--out carpeta]",
+      "Uso: node tools/spike-dictado.mjs <foto> [--ref texto.txt] [--free] [--rotate 90|180|270] [--crop x,y,w,h] [--no-explain] [--from-json resultado.json] [--out carpeta]",
     );
   }
   if (args.free && args.ref) fail("--free y --ref no se combinan: en modo libre no hay texto original.");
   return args;
+}
+
+// --rotate: grados en el sentido del reloj, como el botón de girar de la web.
+function parseRotate(value) {
+  const degrees = Number(value);
+  if (![90, 180, 270].includes(degrees)) fail("--rotate admite 90, 180 o 270 (grados en el sentido del reloj).");
+  return degrees / 90;
+}
+
+// --crop x,y,w,h en píxeles de la imagen original (con la orientación EXIF ya aplicada, antes de girar).
+function parseCrop(value) {
+  const parts = String(value ?? "").split(",").map(Number);
+  if (parts.length !== 4 || !parts.every(Number.isFinite) || parts[2] < 1 || parts[3] < 1 || parts[0] < 0 || parts[1] < 0) {
+    fail("--crop espera x,y,w,h en píxeles de la imagen original (por ejemplo 100,200,1800,1200).");
+  }
+  const [x, y, w, h] = parts;
+  return { x, y, w, h };
 }
 
 function fail(message) {
@@ -67,15 +92,22 @@ function fail(message) {
 
 // ---------- Imagen: misma preparación que la web ----------
 
-async function prepareImage(photoPath) {
+// Misma preparación que la web: girar, recortar y reducir a lo que Claude ve sin reescalar.
+async function prepareImage(photoPath, { turns, crop }) {
   const image = await loadImage(fs.readFileSync(photoPath)); // aplica la orientación EXIF
+  const rotated = rotatedSize(image.width, image.height, turns);
+  // El recorte viene en píxeles de la original: se gira con la imagen para tenerlo en la girada
+  const region = crop
+    ? rotateRectTurns(crop, image.width, image.height, turns).rect
+    : { x: 0, y: 0, w: rotated.width, h: rotated.height };
+  const fractions = crop
+    ? { x: region.x / rotated.width, y: region.y / rotated.height, w: region.w / rotated.width, h: region.h / rotated.height }
+    : null;
+  const box = cropRegion(fractions, rotated.width, rotated.height);
   // Lado largo y píxeles totales acotados (si no, la API reduce la foto y las cajas se desplazan)
-  const { width, height } = fitImageSize(image.width, image.height);
+  const { width, height } = fitImageSize(box.w, box.h);
   const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(image, 0, 0, width, height);
+  drawPhotoRegion(canvas.getContext("2d"), image, image.width, image.height, turns, box, width, height);
   const jpeg = canvas.toBuffer("image/jpeg", Math.round(JPEG_QUALITY * 100));
   return { canvas, width, height, base64: jpeg.toString("base64"), bytes: jpeg.length };
 }
@@ -94,20 +126,6 @@ async function callModel(params) {
 
 // ---------- Dibujo ----------
 
-function drawEllipse(ctx, box, color, lineWidth, dashed) {
-  const [x0, y0, x1, y1] = box;
-  const padX = Math.max(6, (x1 - x0) * 0.2);
-  const padY = Math.max(4, (y1 - y0) * 0.2);
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = lineWidth;
-  if (dashed) ctx.setLineDash([lineWidth * 2, lineWidth * 1.5]);
-  ctx.beginPath();
-  ctx.ellipse((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 + padX, (y1 - y0) / 2 + padY, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-}
-
 function drawLabel(ctx, text, x, y, color, size) {
   ctx.save();
   ctx.font = `bold ${size}px sans-serif`;
@@ -119,7 +137,7 @@ function drawLabel(ctx, text, x, y, color, size) {
   ctx.restore();
 }
 
-function drawResult(canvas, tokens, errors) {
+function drawResult(canvas, tokens, marks) {
   const ctx = canvas.getContext("2d");
   const lineWidth = Math.max(3, Math.round(canvas.width / 400));
   const fontSize = Math.max(14, Math.round(canvas.width / 90));
@@ -134,17 +152,17 @@ function drawResult(canvas, tokens, errors) {
     ctx.restore();
     drawLabel(ctx, String(i), x0, y0, "rgba(22,163,74,0.9)", Math.round(fontSize * 0.7));
   });
-  // Círculos de los fallos
-  errors.forEach((error, i) => {
-    const marker = markerFor(error, tokens);
-    if (!marker) return;
-    const color = error.doubtful ? "#f97316" : "#dc2626";
-    drawEllipse(ctx, marker.box, color, lineWidth, error.op === "missing");
-    drawLabel(ctx, String(i + 1), marker.box[2], marker.box[1], color, fontSize);
-  });
+  // Subrayados rojos de los fallos (el mismo dibujo que la web)
+  drawMarks(ctx, marks, canvas.width);
 }
 
 // ---------- Informe ----------
+
+// "Letra y tilde" cuando una palabra tiene varios tipos de fallo.
+function kindLabels(error) {
+  const labels = (error.kinds ?? [error.kind]).map((kind) => KIND_LABELS[kind]);
+  return labels.map((label, i) => (i === 0 ? label : label.toLowerCase())).join(" y ");
+}
 
 function printErrors(errors, tokens, explanations) {
   if (errors.length === 0) {
@@ -156,10 +174,16 @@ function printErrors(errors, tokens, explanations) {
     const box = markerFor(error, tokens) ? "caja ok" : "SIN CAJA";
     const what = [d.written && `«${d.written}»`, d.correct && `→ «${d.correct}»`].filter(Boolean).join(" ");
     const doubt = error.doubtful ? " [dudosa]" : "";
-    console.log(`  ${i + 1}. ${KIND_LABELS[error.kind]}${doubt}: ${d.lead} ${what} (${box})`);
+    console.log(`  ${i + 1}. ${kindLabels(error)}${doubt}: ${d.lead} ${what} (${box})`);
     const text = explanations?.[i + 1] ?? error.explanation;
     if (text) console.log(`       ${text}`);
   });
+}
+
+function printTips(tips) {
+  console.log(`\nConsejos de letra (${tips.length}, no cuentan como fallos):`);
+  if (tips.length === 0) console.log("  (ninguno)");
+  tips.forEach((tip, i) => console.log(`  ${i + 1}. «${tip.written.text}»: ${tip.text}`));
 }
 
 // ---------- Principal ----------
@@ -169,8 +193,9 @@ async function main() {
   if (!args.fromJson && !process.env.ANTHROPIC_API_KEY) fail("Falta ANTHROPIC_API_KEY en el entorno.");
   const refText = args.ref ? fs.readFileSync(args.ref, "utf8").trim() : null;
 
-  const photo = await prepareImage(args.photo);
-  console.log(`Imagen enviada: ${photo.width}x${photo.height}, JPEG ${(photo.bytes / 1024).toFixed(0)} KB`);
+  const photo = await prepareImage(args.photo, { turns: args.turns, crop: args.crop });
+  const prep = [args.turns && `girada ${args.turns * 90}°`, args.crop && "recortada"].filter(Boolean).join(" y ");
+  console.log(`Imagen enviada${prep ? ` (${prep})` : ""}: ${photo.width}x${photo.height}, JPEG ${(photo.bytes / 1024).toFixed(0)} KB`);
 
   let result;
   if (args.fromJson) {
@@ -203,11 +228,14 @@ async function main() {
   console.log(`  «${tokens.map((t) => t.text).join(" ")}»`);
 
   let errors = [];
+  let tips = null;
   let explanations = null;
   if (isFree) {
     errors = freeErrorsToErrors(transcription.errors, tokens);
+    tips = freeTipsToTips(transcription.tips, tokens); // un JSON del esquema antiguo no trae tips
+
   } else if (refText) {
-    errors = findErrors(tokenize(refText), tokens);
+    ({ errors, tips } = analyze(tokenize(refText), tokens)); // las palabras pegadas salen como consejo
     if (errors.length === 0) {
       console.log("AVISO: cero fallos. Si el niño cometió faltas, el modelo las ha corregido al leer.");
     }
@@ -226,6 +254,7 @@ async function main() {
 
   console.log(`\nFallos (${errors.length}):`);
   printErrors(errors, tokens, explanations);
+  if (tips) printTips(tips);
   if (errors.length > 0) {
     const s = summarize(errors);
     console.log(`Resumen: ${s.total} fallos, ${s.doubtful} dudosos`, s.byKind);
@@ -247,7 +276,8 @@ async function main() {
   // Salida
   fs.mkdirSync(args.out, { recursive: true });
   const base = path.join(args.out, path.basename(args.photo, path.extname(args.photo)));
-  drawResult(photo.canvas, tokens, errors);
+  const marks = errors.map((error, i) => ({ ...error, n: i + 1, marker: markerFor(error, tokens) }));
+  drawResult(photo.canvas, tokens, marks);
   fs.writeFileSync(`${base}.dictado.png`, photo.canvas.toBuffer("image/png"));
   if (!args.fromJson) fs.writeFileSync(`${base}.dictado.json`, JSON.stringify({ ...result, costUsd: cost }, null, 2));
   console.log(`\nGuardado: ${base}.dictado.png${args.fromJson ? "" : " y .json"}`);

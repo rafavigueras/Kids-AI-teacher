@@ -41,11 +41,14 @@ Fichas de ejercicios con modo estudio y quiz. Funciona en iPad sin instalación.
 │   ├── math-game-logic.js ← lógica del juego de mates (tests en .test.js)
 │   ├── french-numbers-logic.js ← números en francés, corrección y puntos (tests en .test.js)
 │   ├── dictation-logic.js   ← comparar dictado y foto, clasificar fallos, marcadores (tests en .test.js)
+│   ├── dictation-draw.js    ← dibujo de la foto girada/recortada y de los subrayados (web y tools/)
 │   ├── dictation-prompts.js ← instrucciones y esquemas para Claude (los comparten la web y tools/)
 │   ├── claude-client.js     ← llamadas a la API de Anthropic desde el navegador
 │   └── dictation-ui.js      ← pantallas del corrector de dictados
 ├── tools/               ← scripts de Node de apoyo (no son parte de la web)
-│   └── spike-dictado.mjs ← prueba de viabilidad con fotos reales (ver tools/README.md)
+│   ├── spike-dictado.mjs ← prueba de viabilidad con fotos reales (ver tools/README.md)
+│   ├── import-dictados-madrid.mjs ← importa los dictados del PDF de la Comunidad de Madrid
+│   └── dictados-parser.mjs ← lectura del PDF (la usa el script y sus tests)
 └── data/
     ├── catalog.json     ← índice de fichas disponibles
     ├── english/
@@ -57,7 +60,7 @@ Fichas de ejercicios con modo estudio y quiz. Funciona en iPad sin instalación.
 ## Corrector de dictados
 
 El niño escucha un dictado (o escribe uno libre), lo escribe en un folio, le hace una foto
-con el iPad y la web marca en rojo los fallos sobre la propia foto, con la explicación debajo.
+con el iPad y la web subraya en rojo los fallos sobre la propia foto, con la explicación debajo y la transcripción completa con las palabras erróneas numeradas. Antes de enviar la foto se puede girar y recortar. Las palabras pegadas no cuentan como falta: salen como consejo de letra («separa más las palabras»).
 Las palabras que Claude no consigue leer salen en naranja: «revísalo con papá».
 
 Cómo funciona, para fiarse del resultado:
@@ -71,6 +74,20 @@ Cómo funciona, para fiarse del resultado:
   de que algún error puede escaparse (sobre todo palabras que suenan igual).
 - **Voz:** si el dispositivo tiene una voz en español, la web lee el dictado frase a frase (repetir,
   más despacio, siguiente), diciendo los signos de puntuación. Si no hay voz, la opción no aparece.
+
+### Dictados del libro de la Comunidad de Madrid
+
+`data/spanish/dictados.json` incluye 220 dictados de «Dictados para Educación Primaria»
+(Comunidad de Madrid, 2009): 80 para «3º y 4º de Primaria» y 140 para «5º y 6º de Primaria».
+Cada uno lleva `number`, `source` y `rules`: las reglas ortográficas que trabaja, tal como las
+redacta el libro. No se guardan autores ni colegios. La web pide primero la dificultad y luego
+muestra la lista de ese nivel (con «Dame uno al azar» y un buscador). Las reglas se pasan a Claude
+para que, al explicar un fallo, cite la regla con esa redacción, y se muestran tras corregir
+(«Lo que practica este dictado»), marcando las que ha fallado. En el dictado libre, el prompt lleva
+un catálogo breve de esas reglas (`RULES_CATALOG` en `js/dictation-prompts.js`).
+
+Para regenerar los datos a partir del PDF (que NO está en el repositorio): `node tools/import-dictados-madrid.mjs
+/ruta/dictados.pdf` (ver `tools/README.md`).
 
 ### Añadir un dictado
 

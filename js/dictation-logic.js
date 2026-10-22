@@ -1,5 +1,5 @@
 // Lógica pura del corrector de dictados: tokenizar, alinear lo escrito con el
-// original, clasificar cada fallo y calcular dónde dibujar el círculo en la foto.
+// original, clasificar cada fallo y calcular dónde dibujar su marca (subrayado) en la foto.
 // No toca el DOM ni la red, así se puede probar con node --test.
 
 export const KINDS = ["tilde", "mayuscula", "letra", "puntuacion", "omitida", "sobra"];
@@ -209,9 +209,31 @@ function syntheticToken(tokens) {
   };
 }
 
+// Unir o separar CAMBIA la palabra o su significado: es falta de ortografía y no un simple
+// espacio mal puesto. Dos palabras que se escriben juntas (original en dos palabras, escrito
+// en una): «por qué/porque», «tan bien/también»... Y una palabra que se escribe partida
+// (original en una, escrito en dos): «porque» por «por que», «tampoco» por «tan poco»...
+// Se comparan sin tildes ni mayúsculas.
+const TWO_WORDS_CHANGE = new Set(["por que", "si no", "tan poco", "tan bien", "a parte", "a ver", "de mas", "con que", "asi mismo", "a donde", "con migo", "con tigo", "con sigo"]);
+const ONE_WORD_CHANGES = new Set(["porque", "sino", "tampoco", "tambien", "aparte", "haber", "demas", "conque", "asimismo", "adonde", "conmigo", "contigo", "consigo"]);
+
+function spacingChangesWord(refs, join) {
+  if (join === "junto") return TWO_WORDS_CHANGE.has(fold(refs.map((t) => t.text).join(" ")));
+  return ONE_WORD_CHANGES.has(fold(refs[0].text));
+}
+
+// Consejo de letra de una unión o separación de palabras que no cambia nada más.
+function spacingTip(op) {
+  return op.join === "junto"
+    ? `Separa más las palabras: aquí pone «${op.written.text}» y son «${op.ref.text}».`
+    : `Esto va junto: aquí pone «${op.written.text}» y es «${op.ref.text}».`;
+}
+
 // "De repente" escrito "Derepente" (o "explorador" escrito "ex plorador") sale del
 // alineamiento como dos operaciones sueltas; aquí se funden en UN fallo de letra con
-// join: "junto" (lo escribió pegado) o "separado" (lo escribió partido).
+// join: "junto" (lo escribió pegado) o "separado" (lo escribió partido). Si solo hay un
+// espacio mal puesto entre palabras correctas (spacingOnly), analyze() lo saca como consejo
+// de letra y no como falta; si la unión cambia la palabra («por que» por «porque») sigue siendo falta.
 function mergeJoinedSplit(ops) {
   const out = [];
   for (let i = 0; i < ops.length; i++) {
@@ -228,6 +250,8 @@ function mergeJoinedSplit(ops) {
       const refText = refs.map((t) => t.text).join("");
       const writtenText = written.map((t) => t.text).join("");
       if (fold(refText) !== fold(writtenText)) continue;
+      const kinds = ["letra", ...classifyAll(refText, writtenText).filter((kind) => kind !== "letra")];
+      const join = joined ? "junto" : "separado";
       merged = {
         op: "substituted",
         ref: refs.length === 1 ? refs[0] : syntheticToken(refs),
@@ -236,8 +260,9 @@ function mergeJoinedSplit(ops) {
         writtenTokens: written,
         refIndex: window.find((op) => op.refIndex !== null)?.refIndex ?? null,
         writtenIndex: window.find((op) => op.writtenIndex !== null).writtenIndex,
-        join: joined ? "junto" : "separado",
-        kinds: ["letra", ...classifyAll(refText, writtenText).filter((kind) => kind !== "letra")],
+        join,
+        kinds,
+        spacingOnly: kinds.length === 1 && !spacingChangesWord(refs, join),
       };
       i += size - 1;
       break;
@@ -278,12 +303,25 @@ function groupRuns(ops) {
 // Todas las diferencias entre el original y lo escrito, en orden de lectura.
 // Cada fallo lleva kinds (todos sus tipos) y kind (el principal).
 export function findErrors(refTokens, writtenTokens) {
-  return groupRuns(mergeJoinedSplit(align(refTokens, writtenTokens)))
-    .filter((op) => op.op !== "equal")
-    .map((op) => {
-      const kinds = op.kinds ?? classifyAll(op.ref, op.written);
-      return { ...op, kind: kinds[0], kinds, doubtful: Boolean(op.written && op.written.legible === false) };
-    });
+  return analyze(refTokens, writtenTokens).errors;
+}
+
+// Lo mismo, separando los espacios mal puestos: { errors, tips }. Los tips son consejos de
+// letra («Separa más las palabras…») con la forma de los del modo libre ({ writtenIndex,
+// written, text }) y no cuentan como fallo.
+export function analyze(refTokens, writtenTokens) {
+  const errors = [];
+  const tips = [];
+  for (const op of groupRuns(mergeJoinedSplit(align(refTokens, writtenTokens)))) {
+    if (op.op === "equal") continue;
+    if (op.spacingOnly) {
+      tips.push({ writtenIndex: op.writtenIndex, written: op.written, text: spacingTip(op) });
+      continue;
+    }
+    const kinds = op.kinds ?? classifyAll(op.ref, op.written);
+    errors.push({ ...op, kind: kinds[0], kinds, doubtful: Boolean(op.written && op.written.legible === false) });
+  }
+  return { errors, tips };
 }
 
 // Qué parte de las palabras del original aparece en lo escrito (iguales o mal escritas),
@@ -465,6 +503,80 @@ export function markerFor(op, writtenTokens) {
   return null;
 }
 
+// ---------- Subrayado de la marca ----------
+
+// Dónde dibujar el subrayado de un marcador (la caja de markerFor). Va justo bajo la caja,
+// ajustado a su ancho, y la palabra que falta (anchor between/after/before) lleva un trazo
+// corto centrado en el hueco. Devuelve { x0, x1, y, dashed }; y es la coordenada del trazo.
+export function underlineFor(marker, lineWidth = 4, { missing = false } = {}) {
+  const [x0, y0, x1, y1] = marker.box;
+  const y = y1 + lineWidth;
+  if (!missing) return { x0, x1, y, dashed: false };
+  const length = Math.min(x1 - x0, Math.max((y1 - y0) * 0.6, lineWidth * 6));
+  const center = (x0 + x1) / 2;
+  return { x0: center - length / 2, x1: center + length / 2, y, dashed: true };
+}
+
+// ---------- Transcripción con las palabras erróneas marcadas ----------
+
+// La transcripción completa en segmentos para pintarla bajo la foto: cada uno es
+// { text, n, doubtful, missing, glued, newLine }. `n` es el número del fallo (null si la
+// palabra está bien); una palabra que falta aparece como segmento `missing` con lo que
+// faltaba (o "▲" si no se sabe). `glued` = sin espacio antes (signos de cierre);
+// `newLine` = empieza una línea nueva del folio. Un fallo que abarca varias palabras seguidas
+// las marca todas con el mismo número.
+export function transcriptSegments(writtenTokens, marks) {
+  const wordMarks = new Map();
+  const missingAt = new Map();
+  for (const mark of marks ?? []) {
+    if (mark.op === "missing") {
+      const list = missingAt.get(mark.insertAt) ?? [];
+      list.push(mark);
+      missingAt.set(mark.insertAt, list);
+      continue;
+    }
+    const covered = (mark.writtenTokens ?? [mark.written]).map((t) => writtenTokens.indexOf(t)).filter((i) => i !== -1);
+    if (covered.length === 0 && mark.writtenIndex != null) covered.push(mark.writtenIndex);
+    for (const i of covered) if (!wordMarks.has(i)) wordMarks.set(i, mark);
+  }
+  const segments = [];
+  // Lo que falta justo antes de una palabra que abre línea va al principio de esa línea
+  // (hereda newLine), y la palabra de después ya no abre línea: así no se va al final de la anterior.
+  const pushMissing = (index, opensLine) => {
+    (missingAt.get(index) ?? []).forEach((mark, k) => {
+      segments.push({
+        text: mark.ref?.text ?? "▲",
+        n: mark.n,
+        doubtful: false,
+        missing: true,
+        glued: false,
+        newLine: opensLine && k === 0,
+      });
+    });
+  };
+  writtenTokens.forEach((token, i) => {
+    const prev = writtenTokens[i - 1];
+    const opensLine = i > 0 && token.line !== undefined && token.line !== prev.line;
+    const hasMissingBefore = missingAt.has(i);
+    pushMissing(i, opensLine);
+    const mark = wordMarks.get(i);
+    const closing = token.type === "punct" && /^[,.;:?!…)»”"]/.test(token.text);
+    const opening = prev && /[¿¡(«“]$/.test(prev.text);
+    segments.push({
+      text: token.text,
+      n: mark ? mark.n : null,
+      doubtful: Boolean(mark?.doubtful),
+      missing: false,
+      // sin espacio antes solo si es la primera palabra del texto (y nada falta delante),
+      // un signo de cierre o lo que sigue a un signo de apertura
+      glued: (i === 0 && !hasMissingBefore) || closing || Boolean(opening),
+      newLine: opensLine && !missingAt.has(i),
+    });
+  });
+  pushMissing(writtenTokens.length, false);
+  return segments;
+}
+
 // ---------- Modo libre ----------
 
 // Busca el token al que se refiere un fallo del modo libre. Claude da el número de
@@ -541,7 +653,71 @@ export function freeErrorsToErrors(modelErrors, writtenTokens) {
       explanation,
     });
   }
-  return result.sort((a, b) => positionOf(a) - positionOf(b));
+  return groupErrorsByWord(result).sort((a, b) => positionOf(a) - positionOf(b));
+}
+
+// Junta los fallos de una misma palabra escrita en UNO (un solo marcador y una sola
+// entrada en la lista): "abia" -> "había" como letra y como tilde, o "Pase" -> "pasé" como
+// tilde y mayúscula. Los tipos se ordenan por importancia (letra, tilde, mayúscula...), las
+// explicaciones distintas se unen en una sola, y "correcto" es el de la entrada del tipo
+// principal (la que manda en la etiqueta), no el de la primera que llegó. Los fallos de palabra que falta (op "missing") no se tocan.
+const KIND_PRIORITY = ["letra", "tilde", "mayuscula", "puntuacion", "omitida", "sobra"];
+
+export function groupErrorsByWord(errors) {
+  const out = [];
+  const byIndex = new Map();
+  for (const error of errors) {
+    if (error.op === "missing" || error.writtenIndex == null) {
+      out.push(error);
+      continue;
+    }
+    const first = byIndex.get(error.writtenIndex);
+    if (!first) {
+      const copy = { ...error, kinds: [...(error.kinds ?? [error.kind])], refs: [] };
+      if (error.ref) copy.refs.push({ kind: error.kind, ref: error.ref });
+      byIndex.set(error.writtenIndex, copy);
+      out.push(copy);
+      continue;
+    }
+    if (error.ref) first.refs.push({ kind: error.kind, ref: error.ref });
+    for (const kind of error.kinds ?? [error.kind]) {
+      if (kind && !first.kinds.includes(kind)) first.kinds.push(kind);
+    }
+    if (first.op === "extra" && error.op === "substituted") first.op = "substituted";
+    first.doubtful = first.doubtful || error.doubtful;
+    const texts = [first.explanation, error.explanation].map((t) => String(t ?? "").trim()).filter(Boolean);
+    first.explanation = texts.length === 2 && texts[0] === texts[1] ? texts[0] : texts.join(" ");
+  }
+  for (const error of out) {
+    if (!error.kinds) continue;
+    error.kinds.sort((a, b) => KIND_PRIORITY.indexOf(a) - KIND_PRIORITY.indexOf(b));
+    error.kind = error.kinds[0];
+    if (error.refs) {
+      const rank = (entry) => KIND_PRIORITY.indexOf(entry.kind);
+      const best = [...error.refs].sort((a, b) => rank(a) - rank(b))[0];
+      if (best) error.ref = best.ref;
+      delete error.refs;
+    }
+  }
+  return out;
+}
+
+// Consejos de letra del modo libre ({wordIndex, written, text}): palabras pegadas que no
+// cuentan como falta. Se resuelven igual que los fallos (índice y texto, con tolerancia de
+// ±3); lo que no se encuentra se descarta. Devuelve [{ writtenIndex, written, text }] en
+// orden de lectura, uno por palabra. Tolera que el modelo no mande `tips` (esquema antiguo).
+export function freeTipsToTips(modelTips, writtenTokens) {
+  const tips = [];
+  const seen = new Set();
+  for (const item of Array.isArray(modelTips) ? modelTips : []) {
+    const text = typeof item?.text === "string" ? item.text.trim() : "";
+    if (!text || !Number.isInteger(item.wordIndex)) continue;
+    const writtenIndex = resolveToken(writtenTokens, item.wordIndex, item.written);
+    if (writtenIndex === -1 || seen.has(writtenIndex)) continue;
+    seen.add(writtenIndex);
+    tips.push({ writtenIndex, written: writtenTokens[writtenIndex], text });
+  }
+  return tips.sort((a, b) => a.writtenIndex - b.writtenIndex);
 }
 
 function positionOf(error) {
@@ -584,6 +760,123 @@ export function genericExplanation(error) {
     default:
       return "Revisa los signos de puntuación en esta parte.";
   }
+}
+
+// ---------- Girar y recortar la foto ----------
+
+// Un rectángulo { x, y, w, h } se gira 90° en el sentido del reloj dentro de una imagen de
+// ancho W y alto H (la imagen girada mide H x W). Sirve en píxeles y, con W = H = 1, en
+// fracciones de la imagen.
+export function rotateRect(rect, W, H) {
+  return { x: H - rect.y - rect.h, y: rect.x, w: rect.h, h: rect.w };
+}
+
+// Rectángulo girado `turns` cuartos de vuelta en el sentido del reloj. Devuelve también el
+// tamaño de la imagen girada.
+export function rotateRectTurns(rect, W, H, turns) {
+  let out = { ...rect };
+  let w = W;
+  let h = H;
+  for (let i = 0; i < ((turns % 4) + 4) % 4; i++) {
+    out = rotateRect(out, w, h);
+    [w, h] = [h, w];
+  }
+  return { rect: out, width: w, height: h };
+}
+
+// Lo que mide una imagen de W x H tras `turns` cuartos de vuelta.
+export function rotatedSize(W, H, turns) {
+  return Math.abs(turns) % 2 === 1 ? { width: H, height: W } : { width: W, height: H };
+}
+
+const MIN_CROP = 0.1;
+
+// Mueve o redimensiona el recorte (en fracciones 0..1 de la imagen girada). `handle` es
+// "move" o la combinación de lados que se arrastran: n, s, e, w, ne, nw, se, sw. dx y dy
+// también en fracciones. El recorte no sale de la imagen ni baja de `min` de ancho o alto.
+export function dragCropRect(rect, handle, dx, dy, min = MIN_CROP) {
+  let { x, y, w, h } = rect;
+  if (handle === "move") {
+    x = Math.max(0, Math.min(1 - w, x + dx));
+    y = Math.max(0, Math.min(1 - h, y + dy));
+    return { x, y, w, h };
+  }
+  let x0 = x;
+  let y0 = y;
+  let x1 = x + w;
+  let y1 = y + h;
+  if (handle.includes("w")) x0 = Math.max(0, Math.min(x1 - min, x0 + dx));
+  if (handle.includes("e")) x1 = Math.min(1, Math.max(x0 + min, x1 + dx));
+  if (handle.includes("n")) y0 = Math.max(0, Math.min(y1 - min, y0 + dy));
+  if (handle.includes("s")) y1 = Math.min(1, Math.max(y0 + min, y1 + dy));
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+// Región en píxeles de la imagen girada (de ancho rw y alto rh) que corresponde a un
+// recorte en fracciones; null = la imagen entera. Siempre dentro de la imagen y de 1 px como mínimo.
+export function cropRegion(fractions, rw, rh) {
+  if (!fractions) return { x: 0, y: 0, w: rw, h: rh };
+  const x = Math.max(0, Math.min(rw - 1, Math.round(fractions.x * rw)));
+  const y = Math.max(0, Math.min(rh - 1, Math.round(fractions.y * rh)));
+  const w = Math.max(1, Math.min(rw - x, Math.round(fractions.w * rw)));
+  const h = Math.max(1, Math.min(rh - y, Math.round(fractions.h * rh)));
+  return { x, y, w, h };
+}
+
+// ---------- Elegir dictado ----------
+
+// Grupo de dificultad de un dictado según su `level`: «3º y 4º de Primaria» y «5º y 6º de
+// Primaria» (también agrupa los antiguos, como «5º Primaria»). Un nivel que no encaje en
+// ninguno de los dos queda en un grupo con su propio texto. Los niños nunca ven «ciclo».
+export function levelGroup(level) {
+  const text = String(level ?? "");
+  if (/[34]\s*º/.test(text)) return { key: "3-4", label: "3º y 4º de Primaria", order: 1 };
+  if (/[56]\s*º/.test(text)) return { key: "5-6", label: "5º y 6º de Primaria", order: 2 };
+  return { key: `otro:${text}`, label: text || "Otros", order: 3 };
+}
+
+// Dictados agrupados por dificultad, en orden: [{ key, label, items }].
+export function groupByLevel(dictations) {
+  const groups = new Map();
+  for (const dictation of dictations ?? []) {
+    const { key, label, order } = levelGroup(dictation.level);
+    if (!groups.has(key)) groups.set(key, { key, label, order, items: [] });
+    groups.get(key).items.push(dictation);
+  }
+  return [...groups.values()].sort((a, b) => a.order - b.order).map(({ order, ...group }) => group);
+}
+
+// Filtra la lista por lo que escribe el niño: todas las palabras buscadas (sin tildes ni
+// mayúsculas) tienen que aparecer en el título, el número o el texto del dictado.
+export function filterDictations(items, query) {
+  const words = fold(String(query ?? "")).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return items;
+  return items.filter((item) => {
+    const haystack = fold(`${item.title} ${item.number ?? ""} ${item.text}`);
+    return words.every((word) => haystack.includes(word));
+  });
+}
+
+// Uno al azar; si hay más de uno evita repetir `avoidId` (el último que salió).
+export function pickRandom(items, random = Math.random, avoidId = null) {
+  if (!items || items.length === 0) return null;
+  const pool = items.length > 1 ? items.filter((item) => item.id !== avoidId) : items;
+  return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
+}
+
+// ---------- Reglas del dictado ----------
+
+// Qué reglas del dictado ha fallado el niño, a partir del número de regla (1..n) que dio la
+// explicación de cada fallo (ruleOf: { n del fallo: número de regla, 0 = ninguna }).
+// Devuelve [{ rule, number, failedBy: [n de fallo...] }] o null si no se puede deducir
+// (no hay reglas o no hubo explicaciones de Claude).
+export function ruleStatus(rules, marks, ruleOf) {
+  if (!Array.isArray(rules) || rules.length === 0 || !ruleOf) return null;
+  return rules.map((rule, i) => ({
+    rule,
+    number: i + 1,
+    failedBy: (marks ?? []).filter((m) => !m.doubtful && ruleOf[m.n] === i + 1).map((m) => m.n),
+  }));
 }
 
 // ---------- Leer en voz alta ----------

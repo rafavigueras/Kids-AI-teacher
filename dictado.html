@@ -36,12 +36,23 @@
                 <div class="dc-panel">
                     <h2 class="dc-title">¿Qué dictado quieres hacer?</h2>
                     <p class="dc-hint">1. Escucha · 2. Escribe en un folio · 3. Haz la foto</p>
-                    <div id="dictation-list" class="dc-grid"></div>
+                    <div id="level-list" class="dc-grid"></div>
                     <button id="free-btn" class="dc-btn dc-red dc-mt-3">
                         📝 Dictado libre
                         <small>Ya tengo uno escrito: Claude lo corrige sin texto</small>
                     </button>
                 </div>
+            </div>
+
+            <!-- 1b. Lista de dictados de un nivel -->
+            <div id="list-screen" class="hidden dc-panel">
+                <h2 id="list-title" class="dc-title-sm"></h2>
+                <button id="random-btn" class="dc-btn dc-lime dc-mt-3">🎲 Dame uno al azar</button>
+                <label for="list-filter" class="dc-label dc-mt-3">O busca uno por su título:</label>
+                <input type="search" id="list-filter" class="dc-input" placeholder="Escribe una palabra…" autocomplete="off">
+                <p id="list-count" class="dc-small"></p>
+                <div id="dictation-list" class="dc-grid dc-scroll-list"></div>
+                <button id="list-back-btn" class="dc-btn dc-slate dc-btn-sm dc-mt-3">Volver</button>
             </div>
 
             <!-- 2. Escuchar -->
@@ -84,7 +95,24 @@
                 <p id="photo-message" class="hidden dc-center dc-error-text dc-mt-3"></p>
 
                 <div id="preview-box" class="hidden">
-                    <img id="preview-img" alt="Vista previa de tu dictado">
+                    <div id="crop-stage" class="dc-crop-stage">
+                        <canvas id="preview-canvas" aria-label="Vista previa de tu dictado"></canvas>
+                        <div id="crop-rect" class="hidden dc-crop-rect" data-handle="move">
+                            <span class="dc-crop-h dc-crop-nw" data-handle="nw"></span>
+                            <span class="dc-crop-h dc-crop-n" data-handle="n"></span>
+                            <span class="dc-crop-h dc-crop-ne" data-handle="ne"></span>
+                            <span class="dc-crop-h dc-crop-e" data-handle="e"></span>
+                            <span class="dc-crop-h dc-crop-se" data-handle="se"></span>
+                            <span class="dc-crop-h dc-crop-s" data-handle="s"></span>
+                            <span class="dc-crop-h dc-crop-sw" data-handle="sw"></span>
+                            <span class="dc-crop-h dc-crop-w" data-handle="w"></span>
+                        </div>
+                    </div>
+                    <div class="dc-grid dc-grid-2 dc-mt-3">
+                        <button id="rotate-btn" class="dc-btn dc-sky dc-btn-sm">↻ Girar</button>
+                        <button id="crop-btn" class="dc-btn dc-sky dc-btn-sm" aria-pressed="false">✂️ Recortar</button>
+                    </div>
+                    <p id="crop-hint" class="hidden dc-small dc-center">Arrastra el recuadro o sus esquinas para quedarte solo con el dictado.</p>
                     <p class="dc-preview-q">¿Se lee bien?</p>
                     <div class="dc-grid dc-grid-2 dc-mt-2">
                         <button id="retake-btn" class="dc-btn dc-slate">↩ Repetir</button>
@@ -122,7 +150,19 @@
                 <p id="result-notice" class="hidden dc-banner dc-banner-yellow dc-mb-3"></p>
                 <canvas id="result-canvas"></canvas>
                 <p id="result-hint" class="hidden dc-small dc-center">Toca un fallo de la lista para verlo en la foto.</p>
+                <h3 class="dc-subtitle">Lo que ha leído Claude</h3>
+                <p id="transcript" class="dc-transcript"></p>
+                <p class="dc-small">Las palabras en rojo son las que tienen fallo: toca el número para ver la explicación.</p>
                 <ol id="errors-list" class="dc-list"></ol>
+                <div id="rules-box" class="hidden dc-rules">
+                    <h3 class="dc-subtitle">Lo que practica este dictado</h3>
+                    <ul id="rules-list" class="dc-list"></ul>
+                </div>
+                <div id="tips-box" class="hidden dc-tips">
+                    <h3 class="dc-subtitle">Consejos de letra</h3>
+                    <p class="dc-small">No son faltas de ortografía, son para que tu letra se lea mejor.</p>
+                    <ul id="tips-list" class="dc-list"></ul>
+                </div>
                 <button id="another-btn" class="dc-btn dc-red dc-mt-4">✍️ Otro dictado</button>
                 <button id="retry-photo-btn" class="dc-btn dc-slate dc-btn-sm dc-mt-2">📷 Repetir con otra foto</button>
             </div>

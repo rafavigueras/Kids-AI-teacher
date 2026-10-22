@@ -137,8 +137,45 @@ body.dictado {
 .dc-chip-doubt { background: #ffedd5; color: #9a3412; }
 
 /* ── Resultado ── */
-#result-canvas, #preview-img { display: block; width: 100%; height: auto; border-radius: 0.75rem; background: #fff; }
-#preview-img { max-height: 60vh; object-fit: contain; }
+#result-canvas { display: block; width: 100%; height: auto; border-radius: 0.75rem; background: #fff; }
+.dc-subtitle { font-size: 1.2rem; font-weight: 900; color: #334155; margin: 1rem 0 0.35rem; }
+.dc-transcript { background: #fff; border-radius: 0.75rem; padding: 0.75rem; font-size: 1.15rem; line-height: 1.9; color: #1e293b; }
+.dc-transcript .dc-line { display: block; }
+.dc-w-bad { color: #dc2626; font-weight: 900; text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 4px; cursor: pointer; }
+.dc-w-doubt { color: #ea580c; }
+.dc-w-missing { color: #dc2626; font-weight: 900; font-style: italic; cursor: pointer; }
+.dc-w-missing::before { content: "^ "; }
+.dc-w-n { display: inline-block; min-width: 1.3rem; margin-left: 0.15rem; border-radius: 999px; background: #dc2626; color: #fff; font-size: 0.8rem; font-weight: 900; line-height: 1.3rem; text-align: center; vertical-align: middle; text-decoration: none; }
+.dc-w-doubt .dc-w-n { background: #f97316; }
+.dc-item-flash { animation: item-flash 1.4s ease-out; }
+@keyframes item-flash { 0% { box-shadow: 0 0 0 4px #fbbf24; } 100% { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); } }
+.dc-tips .dc-item { cursor: default; border-left: 6px solid #3b82f6; }
+.dc-tips .dc-item-head em { color: #1d4ed8; }
+
+/* ── Lista de dictados y reglas ── */
+.dc-scroll-list { max-height: 50vh; overflow-y: auto; padding: 0.25rem; -webkit-overflow-scrolling: touch; }
+.dc-scroll-list .dc-btn { text-align: left; font-size: 1.05rem; padding: 0.65rem 1rem; }
+.dc-scroll-list .dc-btn small { font-size: 0.85rem; }
+.dc-rules .dc-item { cursor: default; white-space: pre-line; }
+.dc-rules .dc-item-head { font-size: 1rem; }
+.dc-rule-fail { border-left: 6px solid #dc2626; }
+.dc-rule-ok { border-left: 6px solid #84cc16; }
+
+/* ── Girar y recortar la foto antes de enviarla ── */
+/* El tamaño del contenedor y del canvas lo fija sizePreview() en dictation-ui.js */
+.dc-crop-stage { position: relative; margin: 0 auto; line-height: 0; overflow: hidden; border-radius: 0.75rem; background: #fff; user-select: none; -webkit-user-select: none; }
+#preview-canvas { display: block; }
+.dc-crop-rect { position: absolute; box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.5); border: 2px solid #fff; cursor: move; touch-action: none; }
+.dc-crop-h { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; background: #fff; border: 3px solid #2563eb; border-radius: 50%; touch-action: none; }
+.dc-crop-h::after { content: ""; position: absolute; inset: -12px; }
+.dc-crop-nw { left: 0; top: 0; cursor: nwse-resize; }
+.dc-crop-n { left: 50%; top: 0; cursor: ns-resize; }
+.dc-crop-ne { left: 100%; top: 0; cursor: nesw-resize; }
+.dc-crop-e { left: 100%; top: 50%; cursor: ew-resize; }
+.dc-crop-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.dc-crop-s { left: 50%; top: 100%; cursor: ns-resize; }
+.dc-crop-sw { left: 0; top: 100%; cursor: nesw-resize; }
+.dc-crop-w { left: 0; top: 50%; cursor: ew-resize; }
 .dc-list { list-style: none; margin-top: 1rem; }
 .dc-list > li + li { margin-top: 0.75rem; }
 .dc-item { background: #fff; border-radius: 0.75rem; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); padding: 0.75rem; display: flex; gap: 0.75rem; cursor: pointer; }

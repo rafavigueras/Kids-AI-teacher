@@ -8,8 +8,18 @@ import {
   KIND_LABELS,
   tokenize,
   flattenTranscription,
-  findErrors,
+  analyze,
   freeErrorsToErrors,
+  freeTipsToTips,
+  transcriptSegments,
+  groupByLevel,
+  filterDictations,
+  pickRandom,
+  ruleStatus,
+  rotateRectTurns,
+  rotatedSize,
+  dragCropRect,
+  cropRegion,
   markerFor,
   summarize,
   describeError,
@@ -20,6 +30,7 @@ import {
   addHistoryEntry,
 } from "./dictation-logic.js";
 import { fitImageSize, JPEG_QUALITY } from "./dictation-prompts.js";
+import { RED, ORANGE, drawPhotoRegion, drawMarks } from "./dictation-draw.js";
 import {
   transcribe,
   correctFree,
@@ -37,9 +48,6 @@ const HISTORY_KEY = `${STORAGE_PREFIX}history`;
 const NORMAL_RATE = 0.85;
 const SLOW_RATE = 0.55;
 
-const RED = "#dc2626";
-const ORANGE = "#f97316";
-
 const DOUBT_CHIP = "dc-chip-doubt";
 
 // Por debajo de esta parte de palabras reconocidas se pregunta si la foto es del dictado.
@@ -54,6 +62,7 @@ const $ = (id) => document.getElementById(id);
 
 const screens = {
   choose: $("choose-screen"),
+  list: $("list-screen"),
   listen: $("listen-screen"),
   photo: $("photo-screen"),
   loading: $("loading-screen"),
@@ -79,8 +88,11 @@ const state = {
   mode: "ref", // "ref" (con texto) o "free" (libre)
   dictation: null,
   dictations: [],
-  photo: null, // { canvas, base64, mediaType, width, height }
-  result: null, // { marks, written, mode }
+  levelGroup: null, // grupo de dificultad abierto: { key, label, items }
+  lastPickedId: null,
+  edit: null, // foto elegida y su edición: { img, url, turns, crop (fracciones de la imagen girada, o null) }
+  photo: null, // la foto ya girada, recortada y reducida: { canvas, base64, mediaType, width, height }
+  result: null, // { marks, written, tips, mode }
   controller: null,
   pinReturn: null, // "settings" (pedir PIN) o "new" (crear PIN)
 };
@@ -148,7 +160,6 @@ function refreshKeyBanner() {
 }
 
 async function loadDictations() {
-  const list = $("dictation-list");
   try {
     const res = await fetch("data/spanish/dictados.json");
     if (!res.ok) throw new Error("No se pudo cargar la lista de dictados");
@@ -156,18 +167,60 @@ async function loadDictations() {
   } catch {
     state.dictations = [];
   }
+  renderLevels();
+}
+
+// Primero la dificultad (3º y 4º, 5º y 6º...) y luego la lista de ese nivel.
+function renderLevels() {
+  const list = $("level-list");
   list.innerHTML = "";
-  if (state.dictations.length === 0) {
+  const groups = groupByLevel(state.dictations);
+  if (groups.length === 0) {
     list.innerHTML = '<p class="dc-hint">No hay dictados en la lista. Puedes hacer uno libre.</p>';
     return;
   }
-  for (const dictation of state.dictations) {
+  for (const group of groups) {
     const button = document.createElement("button");
     button.className = "dc-btn dc-blue";
-    button.innerHTML = `✍️ ${esc(dictation.title)}<small>${esc(dictation.level)}</small>`;
+    button.innerHTML = `✍️ ${esc(group.label)}<small>${group.items.length} dictados</small>`;
+    button.addEventListener("click", () => openLevel(group));
+    list.appendChild(button);
+  }
+}
+
+function openLevel(group) {
+  state.levelGroup = group;
+  $("list-title").textContent = group.label;
+  $("list-filter").value = "";
+  renderDictationList();
+  showScreen("list");
+}
+
+function renderDictationList() {
+  const list = $("dictation-list");
+  const items = filterDictations(state.levelGroup.items, $("list-filter").value);
+  list.innerHTML = "";
+  $("list-count").textContent =
+    items.length === state.levelGroup.items.length ? `${items.length} dictados` : `${items.length} de ${state.levelGroup.items.length}`;
+  if (items.length === 0) {
+    list.innerHTML = '<p class="dc-hint">No hay ninguno con esa palabra.</p>';
+    return;
+  }
+  for (const dictation of items) {
+    const button = document.createElement("button");
+    button.className = "dc-btn dc-blue";
+    const number = dictation.number ? `Dictado ${dictation.number}` : "";
+    button.innerHTML = `${esc(dictation.title)}${number ? `<small>${esc(number)}</small>` : ""}`;
     button.addEventListener("click", () => startDictation(dictation));
     list.appendChild(button);
   }
+}
+
+function startRandom() {
+  const pick = pickRandom(filterDictations(state.levelGroup.items, $("list-filter").value), Math.random, state.lastPickedId);
+  if (!pick) return;
+  state.lastPickedId = pick.id;
+  startDictation(pick);
 }
 
 function startDictation(dictation) {
@@ -251,11 +304,13 @@ function moveFragment(delta) {
 // ---------- Foto ----------
 
 function resetPhoto() {
+  if (state.edit) URL.revokeObjectURL(state.edit.url);
+  state.edit = null;
   state.photo = null;
   $("preview-box").classList.add("hidden");
   $("photo-actions").classList.remove("hidden");
   $("photo-message").classList.add("hidden");
-  $("preview-img").removeAttribute("src");
+  setCropping(false);
 }
 
 function openPhotoScreen() {
@@ -276,36 +331,141 @@ function showPhotoMessage(text) {
 
 // Decodifica con <img>: es lo que mejor respeta la orientación EXIF (iOS desde 13.4 y los
 // navegadores actuales la aplican al dibujar). No se usa createImageBitmap, que en Safari
-// podía ignorar la opción de orientación sin avisar.
+// podía ignorar la opción de orientación sin avisar. La URL se queda viva mientras se edita
+// la foto (se libera en resetPhoto).
 async function loadImage(file) {
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();
     img.src = url;
     await img.decode();
-    return img;
+    return { img, url };
   } catch (error) {
     URL.revokeObjectURL(url);
     throw error;
   }
 }
 
-// Foto -> canvas reducido a lo que Claude ve sin reescalar (lado largo y píxeles totales
-// acotados, ver fitImageSize: así sus cajas caen 1:1 sobre este canvas) -> JPEG en base64.
-// La imagen no se guarda en ningún sitio.
-async function prepareImage(file) {
-  const img = await loadImage(file);
-  const { width, height } = fitImageSize(img.naturalWidth, img.naturalHeight);
+// Foto elegida -> girada y recortada como diga state.edit -> canvas reducido a lo que Claude
+// ve sin reescalar (lado largo y píxeles totales acotados, ver fitImageSize: así sus cajas
+// caen 1:1 sobre este canvas) -> JPEG en base64. La imagen no se guarda en ningún sitio.
+function prepareImage() {
+  const { img, turns, crop } = state.edit;
+  const srcW = img.naturalWidth;
+  const srcH = img.naturalHeight;
+  const rotated = rotatedSize(srcW, srcH, turns);
+  const region = cropRegion(crop, rotated.width, rotated.height);
+  const { width, height } = fitImageSize(region.w, region.h);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(img, 0, 0, width, height);
-  URL.revokeObjectURL(img.src);
+  drawPhotoRegion(canvas.getContext("2d"), img, srcW, srcH, turns, region, width, height);
   const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
   return { canvas, base64: dataUrl.split(",")[1], mediaType: "image/jpeg", width, height, dataUrl };
+}
+
+// Vista previa: la foto entera ya girada, a un tamaño cómodo (no es la que se envía).
+const PREVIEW_EDGE = 1400;
+
+// El recuadro de recorte se coloca en % del contenedor y el arrastre se mide sobre el canvas:
+// el contenedor mide exactamente lo que se ve del canvas (ancho disponible y 60 % del alto de
+// la ventana como máximo, sin deformar), y se recalcula al girar y al cambiar el tamaño de la
+// ventana o la orientación. Con CSS (max-width/max-height) Safari de iOS no coincidía.
+function sizePreview() {
+  const canvas = $("preview-canvas");
+  const stage = $("crop-stage");
+  if (!state.edit || !canvas.width) return;
+  const available = $("preview-box").clientWidth || canvas.width;
+  const scale = Math.min(1, available / canvas.width, (window.innerHeight * 0.6) / canvas.height);
+  const w = Math.max(1, Math.floor(canvas.width * scale));
+  const h = Math.max(1, Math.floor(canvas.height * scale));
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  stage.style.width = `${w}px`;
+  stage.style.height = `${h}px`;
+}
+
+function renderPreview() {
+  const { img, turns } = state.edit;
+  const rotated = rotatedSize(img.naturalWidth, img.naturalHeight, turns);
+  const scale = Math.min(1, PREVIEW_EDGE / Math.max(rotated.width, rotated.height));
+  const canvas = $("preview-canvas");
+  canvas.width = Math.max(1, Math.round(rotated.width * scale));
+  canvas.height = Math.max(1, Math.round(rotated.height * scale));
+  drawPhotoRegion(
+    canvas.getContext("2d"),
+    img,
+    img.naturalWidth,
+    img.naturalHeight,
+    turns,
+    { x: 0, y: 0, w: rotated.width, h: rotated.height },
+    canvas.width,
+    canvas.height,
+  );
+  sizePreview();
+  positionCropRect();
+}
+
+// ---- Girar y recortar ----
+
+const CROP_INSET = 0.08; // el recuadro empieza un poco por dentro, para poder agarrarlo
+
+function rotatePhoto() {
+  if (!state.edit) return;
+  const { turns, crop } = state.edit;
+  if (crop) state.edit.crop = rotateRectTurns(crop, 1, 1, 1).rect; // el recuadro gira con la foto
+  state.edit.turns = (turns + 1) % 4;
+  renderPreview();
+}
+
+function setCropping(on) {
+  $("crop-rect").classList.toggle("hidden", !on);
+  $("crop-hint").classList.toggle("hidden", !on);
+  $("crop-btn").setAttribute("aria-pressed", String(on));
+  $("crop-btn").textContent = on ? "✂️ Quitar recorte" : "✂️ Recortar";
+  if (state.edit) {
+    state.edit.crop = on ? (state.edit.crop ?? { x: CROP_INSET, y: CROP_INSET, w: 1 - 2 * CROP_INSET, h: 1 - 2 * CROP_INSET }) : null;
+    positionCropRect();
+  }
+}
+
+function toggleCropping() {
+  if (state.edit) setCropping(!state.edit.crop);
+}
+
+function positionCropRect() {
+  const crop = state.edit?.crop;
+  if (!crop) return;
+  const el = $("crop-rect");
+  el.style.left = `${crop.x * 100}%`;
+  el.style.top = `${crop.y * 100}%`;
+  el.style.width = `${crop.w * 100}%`;
+  el.style.height = `${crop.h * 100}%`;
+}
+
+// Arrastrar el recuadro (o una esquina o lado) con ratón o dedo: eventos de puntero.
+let cropDrag = null;
+
+function onCropDown(event) {
+  if (!state.edit?.crop) return;
+  const handle = event.target.dataset.handle ?? "move";
+  const bounds = $("preview-canvas").getBoundingClientRect();
+  if (bounds.width === 0 || bounds.height === 0) return;
+  cropDrag = { handle, x: event.clientX, y: event.clientY, rect: { ...state.edit.crop }, bounds, id: event.pointerId };
+  $("crop-rect").setPointerCapture(event.pointerId);
+  event.preventDefault();
+}
+
+function onCropMove(event) {
+  if (!cropDrag || event.pointerId !== cropDrag.id) return;
+  const dx = (event.clientX - cropDrag.x) / cropDrag.bounds.width;
+  const dy = (event.clientY - cropDrag.y) / cropDrag.bounds.height;
+  state.edit.crop = dragCropRect(cropDrag.rect, cropDrag.handle, dx, dy);
+  positionCropRect();
+}
+
+function onCropUp(event) {
+  if (cropDrag && event.pointerId === cropDrag.id) cropDrag = null;
 }
 
 async function onPhotoChosen(input) {
@@ -313,16 +473,19 @@ async function onPhotoChosen(input) {
   input.value = ""; // permite elegir la misma foto otra vez
   if (!file) return;
   $("photo-message").classList.add("hidden");
+  let loaded;
   try {
-    state.photo = await prepareImage(file);
+    loaded = await loadImage(file);
   } catch {
     showPhotoMessage("No he podido abrir esa foto. Prueba con otra.");
     return;
   }
-  $("preview-img").src = state.photo.dataUrl;
+  resetPhoto();
+  state.edit = { img: loaded.img, url: loaded.url, turns: 0, crop: null };
   $("photo-actions").classList.add("hidden");
-  $("preview-box").classList.remove("hidden");
-  if (Math.max(state.photo.width, state.photo.height) < 900) {
+  $("preview-box").classList.remove("hidden"); // visible antes de medirlo en renderPreview
+  renderPreview();
+  if (Math.max(loaded.img.naturalWidth, loaded.img.naturalHeight) < 900) {
     showPhotoMessage("La foto es muy pequeña: puede que no se lea bien.");
   }
 }
@@ -354,13 +517,18 @@ let busy = false;
 
 // Una sola corrección a la vez: un segundo toque no debe lanzar (y cobrar) otra llamada.
 async function correct() {
-  if (!state.photo || busy) return;
+  if (!state.edit || busy) return;
   busy = true;
   $("correct-btn").disabled = true;
   state.controller = new AbortController();
   const { signal } = state.controller;
   startLoading("Mirando la foto…");
   try {
+    try {
+      state.photo = prepareImage(); // la imagen que se envía es la girada y recortada
+    } catch {
+      throw new PhotoError();
+    }
     const result = state.mode === "ref" ? await correctWithText(signal) : await correctFreeMode(signal);
     stopLoading();
     state.result = result;
@@ -370,6 +538,9 @@ async function correct() {
     stopLoading();
     if (error.code === "cancelado") {
       showScreen("photo");
+    } else if (error instanceof PhotoError) {
+      showScreen("photo");
+      showPhotoMessage("No he podido preparar la foto. Prueba a girarla otra vez o con otra foto.");
     } else if (error instanceof WrongDictation) {
       resetPhoto();
       openPhotoScreen();
@@ -384,6 +555,7 @@ async function correct() {
 
 class NoTextError extends Error {}
 class WrongDictation extends Error {}
+class PhotoError extends Error {}
 
 // Pregunta si la foto es del dictado cuando casi nada coincide. Devuelve true si sigue adelante.
 function askIfSameDictation(ratio, written) {
@@ -416,11 +588,15 @@ async function correctWithText(signal) {
     if (!(await askIfSameDictation(ratio, written))) throw new WrongDictation();
     startLoading("Comparando con el dictado…");
   }
-  const errors = findErrors(refTokens, written);
+  // Palabras pegadas o partidas que no cambian la palabra: consejo de letra, no falta
+  const { errors, tips } = analyze(refTokens, written);
   const marks = errors.map((error, i) => ({ ...error, n: i + 1, marker: markerFor(error, written) }));
 
   const toExplain = marks.filter((m) => !m.doubtful);
   let explanations = {};
+  // regla del dictado a la que corresponde cada fallo, si Claude las pudo explicar; sin ningún
+  // fallo firme no hay nada que explicar y todas las reglas salen «sin fallos»
+  let ruleOf = toExplain.length === 0 ? {} : null;
   if (toExplain.length > 0) {
     setLoadingStep("Preparando las explicaciones…");
     try {
@@ -430,14 +606,17 @@ async function correctWithText(signal) {
           m.join === "junto" ? "lo escribió todo junto y va separado" : m.join === "separado" ? "lo escribió separado y va todo junto" : undefined;
         return { n: m.n, kind: m.kind, kinds: m.kinds, written: d.written, correct: d.correct, detail };
       });
-      explanations = await explain(items, state.dictation.text, { signal });
+      const explained = await explain(items, state.dictation.text, { rules: state.dictation.rules ?? [], signal });
+      explanations = explained.texts;
+      ruleOf = explained.rules;
     } catch (error) {
       if (error.code === "cancelado") throw error;
       // sin explicaciones de Claude se usan las genéricas: el resultado sigue valiendo
     }
   }
   for (const mark of marks) mark.explanation = explanations[mark.n] || genericExplanation(mark);
-  return { marks, written, mode: "ref", imageProblem: transcription.imageProblem };
+  const rules = ruleStatus(state.dictation.rules, marks, ruleOf);
+  return { marks, written, tips, rules, rulesList: state.dictation.rules ?? [], mode: "ref", imageProblem: transcription.imageProblem };
 }
 
 // Libre: una sola llamada con transcripción y fallos.
@@ -463,12 +642,14 @@ async function correctFreeMode(signal) {
     marker: markerFor(error, written),
     explanation: error.explanation || (error.kind ? genericExplanation(error) : ""),
   }));
-  return { marks, written, mode: "free", imageProblem: response.imageProblem };
+  // Palabras pegadas: consejo de letra aparte, no cuentan como fallo (un JSON antiguo no trae tips)
+  const tips = freeTipsToTips(response.tips, written);
+  return { marks, written, tips, mode: "free", imageProblem: response.imageProblem };
 }
 
 // ---------- Resultado ----------
 
-function renderResult({ marks, mode, imageProblem }) {
+function renderResult({ marks, written, tips, rules, rulesList, mode, imageProblem }) {
   const summary = summarize(marks);
   const title = $("result-title");
   if (summary.total === 0 && summary.doubtful === 0) {
@@ -511,7 +692,80 @@ function renderResult({ marks, mode, imageProblem }) {
   if (marks.length === 0) {
     list.innerHTML = '<li class="dc-all-good">No he encontrado ningún fallo en tu dictado.</li>';
   }
+
+  renderTranscript(written, marks);
+  renderRules(rules, rulesList);
+
+  // Consejos de letra: apartado propio, fuera del recuento de fallos
+  const tipsList = $("tips-list");
+  tipsList.innerHTML = "";
+  for (const tip of tips ?? []) {
+    const li = document.createElement("li");
+    li.className = "dc-item";
+    li.innerHTML = `<span class="dc-badge" style="background:#3b82f6">💡</span>
+      <div class="dc-item-body"><p class="dc-item-head">Mira <em>${esc(tip.written.text)}</em></p><p class="dc-item-text">${esc(tip.text)}</p></div>`;
+    tipsList.appendChild(li);
+  }
+  $("tips-box").classList.toggle("hidden", !(tips ?? []).length);
   showScreen("result");
+}
+
+// «Lo que practica este dictado»: las reglas del libro. Si Claude explicó los fallos se sabe
+// cuáles ha fallado (con los números de sus fallos); si no, se muestran sin marcar.
+function renderRules(status, rulesList) {
+  const list = $("rules-list");
+  list.innerHTML = "";
+  const entries = status ?? (rulesList ?? []).map((rule, i) => ({ rule, number: i + 1, failedBy: null }));
+  for (const entry of entries) {
+    const li = document.createElement("li");
+    const failed = entry.failedBy && entry.failedBy.length > 0;
+    li.className = `dc-item ${entry.failedBy === null ? "" : failed ? "dc-rule-fail" : "dc-rule-ok"}`;
+    const mark = failed
+      ? `<span class="dc-chip dc-chip-letra">Aquí has fallado (${entry.failedBy.map((n) => `fallo ${n}`).join(", ")})</span>`
+      : entry.failedBy ? '<span class="dc-chip dc-chip-puntuacion">Sin fallos en esta regla</span>' : "";
+    li.innerHTML = `<div class="dc-item-body"><p class="dc-item-head">${esc(entry.rule)}</p><div class="dc-item-tags">${mark}</div></div>`;
+    list.appendChild(li);
+  }
+  $("rules-box").classList.toggle("hidden", entries.length === 0);
+}
+
+// La transcripción completa bajo la foto, con las palabras erróneas en rojo y numeradas:
+// tocar una lleva a su explicación. Así el niño sabe qué palabra es aunque la marca de la
+// foto se desvíe.
+function renderTranscript(written, marks) {
+  const box = $("transcript");
+  box.innerHTML = "";
+  let line = null;
+  const newLine = () => {
+    line = document.createElement("span");
+    line.className = "dc-line";
+    box.appendChild(line);
+  };
+  newLine();
+  for (const seg of transcriptSegments(written, marks)) {
+    if (seg.newLine) newLine();
+    if (line.childNodes.length > 0 && !seg.glued) line.appendChild(document.createTextNode(" "));
+    const span = document.createElement("span");
+    if (seg.n == null) {
+      span.textContent = seg.text;
+    } else {
+      span.className = seg.missing ? "dc-w-missing" : seg.doubtful ? "dc-w-bad dc-w-doubt" : "dc-w-bad";
+      span.innerHTML = `${esc(seg.text)}<span class="dc-w-n">${seg.n}</span>`;
+      span.addEventListener("click", () => showItem(seg.n));
+    }
+    line.appendChild(span);
+  }
+}
+
+// Lleva a la explicación de un fallo y la resalta un momento.
+function showItem(n) {
+  const li = $("errors-list").querySelector(`[data-n="${n}"]`);
+  if (!li) return;
+  drawResult(n);
+  li.scrollIntoView({ behavior: "smooth", block: "center" });
+  li.classList.remove("dc-item-flash");
+  void li.offsetWidth; // reinicia la animación
+  li.classList.add("dc-item-flash");
 }
 
 function errorItem(mark) {
@@ -553,7 +807,7 @@ function doubtText(mark) {
   return `${read} Mírala con papá.`;
 }
 
-// Foto + círculos numerados. highlight = número del fallo a resaltar.
+// Foto + subrayados numerados. highlight = número del fallo a resaltar.
 function drawResult(highlight) {
   const canvas = $("result-canvas");
   const { photo, result } = state;
@@ -561,52 +815,7 @@ function drawResult(highlight) {
   canvas.height = photo.height;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(photo.canvas, 0, 0);
-
-  const baseLine = Math.max(4, Math.round(photo.width / 280));
-  const radius = Math.max(14, Math.round(photo.width / 50));
-  const badges = [];
-  for (const mark of result.marks) {
-    if (!mark.marker) continue;
-    const color = mark.doubtful ? ORANGE : RED;
-    const strong = mark.n === highlight;
-    drawEllipse(ctx, mark.marker.box, color, strong ? baseLine * 2 : baseLine, mark.op === "missing");
-    drawBadge(ctx, mark, color, radius, badges, photo);
-  }
-}
-
-function drawEllipse(ctx, box, color, lineWidth, dashed) {
-  const [x0, y0, x1, y1] = box;
-  const padX = Math.max(8, (x1 - x0) * 0.2);
-  const padY = Math.max(6, (y1 - y0) * 0.2);
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = lineWidth;
-  if (dashed) ctx.setLineDash([lineWidth * 2, lineWidth * 1.5]);
-  ctx.beginPath();
-  ctx.ellipse((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 + padX, (y1 - y0) / 2 + padY, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-}
-
-// Número en la esquina superior derecha del círculo; si choca con otro, se corre a la derecha.
-function drawBadge(ctx, mark, color, radius, placed, photo) {
-  const [, y0, x1] = mark.marker.box;
-  let x = x1 + radius * 0.3;
-  const y = Math.max(radius, y0 - radius * 0.2);
-  while (placed.some((p) => Math.hypot(p.x - x, p.y - y) < radius * 1.8)) x += radius * 1.9;
-  x = Math.min(x, photo.width - radius);
-  placed.push({ x, y });
-  ctx.save();
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.font = `bold ${Math.round(radius * 1.15)}px sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(String(mark.n), x, y + radius * 0.05);
-  ctx.restore();
+  drawMarks(ctx, result.marks, photo.width, highlight);
 }
 
 // ---------- Error ----------
@@ -615,6 +824,7 @@ let lastError = null;
 
 function showError(error) {
   lastError = error;
+  console.error(error); // para quien mire la consola; el niño ve solo el mensaje de abajo
   $("error-message").textContent = error instanceof NoTextError || error.name === "DictationError"
     ? error.message
     : "Algo ha fallado. Inténtalo otra vez.";
@@ -726,6 +936,9 @@ async function saveAndTestKey() {
 // ---------- Eventos ----------
 
 $("free-btn").addEventListener("click", startFree);
+$("random-btn").addEventListener("click", startRandom);
+$("list-filter").addEventListener("input", renderDictationList);
+$("list-back-btn").addEventListener("click", () => showScreen("choose"));
 
 $("repeat-btn").addEventListener("click", () => speakCurrent(NORMAL_RATE));
 $("slow-btn").addEventListener("click", () => speakCurrent(SLOW_RATE));
@@ -734,7 +947,7 @@ $("prev-btn").addEventListener("click", () => moveFragment(-1));
 $("listen-done-btn").addEventListener("click", openPhotoScreen);
 $("listen-back-btn").addEventListener("click", () => {
   stopSpeaking();
-  showScreen("choose");
+  showScreen(state.levelGroup ? "list" : "choose");
 });
 
 $("take-photo-btn").addEventListener("click", () => $("camera-input").click());
@@ -742,12 +955,20 @@ $("pick-photo-btn").addEventListener("click", () => $("gallery-input").click());
 $("camera-input").addEventListener("change", (e) => onPhotoChosen(e.target));
 $("gallery-input").addEventListener("change", (e) => onPhotoChosen(e.target));
 $("retake-btn").addEventListener("click", resetPhoto);
+window.addEventListener("resize", sizePreview);
+window.addEventListener("orientationchange", sizePreview);
+$("rotate-btn").addEventListener("click", rotatePhoto);
+$("crop-btn").addEventListener("click", toggleCropping);
+$("crop-rect").addEventListener("pointerdown", onCropDown);
+$("crop-rect").addEventListener("pointermove", onCropMove);
+$("crop-rect").addEventListener("pointerup", onCropUp);
+$("crop-rect").addEventListener("pointercancel", onCropUp);
 $("correct-btn").addEventListener("click", correct);
 $("photo-back-btn").addEventListener("click", () => {
   if (state.mode === "ref" && spanishVoice) {
     showScreen("listen");
   } else {
-    showScreen("choose");
+    showScreen(state.mode === "ref" && state.levelGroup ? "list" : "choose");
   }
 });
 
